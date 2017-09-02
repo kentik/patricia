@@ -10,13 +10,13 @@ var _bitMasks = []uint8{128, 64, 32, 16, 8, 4, 2, 1}
 // MatchesFunc is called to check if tag data matches the input value
 type MatchesFunc func(payload interface{}, val interface{}) bool
 
-// Node represents a node in the Patricia tree
-type Node struct {
-	Left         *Node   // left node
-	Right        *Node   // right node
-	Prefix       []uint8 // prefix that this node represents, as a series of bits, stored starting with most significant bit
-	PrefixBools  []bool  // prefix, as unpacked bits
-	PrefixLength uint8   // how many bits are in the prefix, since it might not line up on a byte boundary
+// treeNode represents a node in the Patricia tree
+type treeNode struct {
+	Left         *treeNode // left node
+	Right        *treeNode // right node
+	Prefix       []uint8   // prefix that this node represents, as a series of bits, stored starting with most significant bit
+	PrefixBools  []bool    // prefix, as unpacked bits
+	PrefixLength uint8     // how many bits are in the prefix, since it might not line up on a byte boundary
 	Tags         []interface{}
 }
 
@@ -35,18 +35,18 @@ func (s *Searcher) FindTags(address []byte, bitCount uint8, filterFunc func(inte
 	return s.tree.findTags(s, address, bitCount, filterFunc)
 }
 
-// NewNode returns a new node
-func NewNode(prefix []uint8, prefixLength uint8) *Node {
+// newTreeNode returns a new node
+func newTreeNode(prefix []uint8, prefixLength uint8) *treeNode {
 	prefixBools := make([]bool, prefixLength)
 	unpackBits(&prefixBools, prefix, prefixLength)
-	return &Node{
+	return &treeNode{
 		Prefix:       prefix,
 		PrefixBools:  prefixBools,
 		PrefixLength: prefixLength,
 	}
 }
 
-func (n *Node) updateBools() {
+func (n *treeNode) updateBools() {
 	n.PrefixBools = make([]bool, 0, n.PrefixLength)
 	unpackBits(&n.PrefixBools, n.Prefix, n.PrefixLength)
 }
@@ -54,7 +54,7 @@ func (n *Node) updateBools() {
 // Tree is an IP Address patricia tree
 type Tree struct {
 	addressSize uint8 // number of bytes per address
-	root        *Node
+	root        *treeNode
 }
 
 // NewTree returns a new Tree
@@ -65,7 +65,7 @@ func NewTree(addressSize uint8) (*Tree, error) {
 
 	return &Tree{
 		addressSize: addressSize,
-		root:        &Node{},
+		root:        &treeNode{},
 	}, nil
 }
 
@@ -78,14 +78,14 @@ func (t *Tree) GetSearcher() *Searcher {
 	}
 }
 
-func countNodes(node *Node) int {
+func countNodes(node *treeNode) int {
 	if node == nil {
 		return 0
 	}
 	return 1 + countNodes(node.Left) + countNodes(node.Right)
 }
 
-func (t *Tree) countTags(node *Node) int {
+func (t *Tree) countTags(node *treeNode) int {
 	if node == nil {
 		return 0
 	}
@@ -145,7 +145,7 @@ func (t *Tree) findTags(searcher *Searcher, address []byte, bitCount uint8, filt
 	unpackBits(&searcher.buff1, address, bitCount)
 
 	// find the starting point
-	var node *Node
+	var node *treeNode
 	if searcher.buff1[0] == false {
 		node = t.root.Left
 	} else {
@@ -200,19 +200,19 @@ func (t *Tree) Delete(address []byte, bitCount uint8, matchFunc MatchesFunc, mat
 		return 0, fmt.Errorf("not enough bits (%d) for the input bitcount %d", len(address)*8, bitCount)
 	}
 
-	parents := []*Node{t.root}
+	parents := []*treeNode{t.root}
 
 	// Find the node that would have this address
 	addressBits := make([]bool, 0, t.addressSize)
 
-	var targetNode *Node
+	var targetNode *treeNode
 	if bitCount == 0 {
 		targetNode = t.root
 	} else {
 		unpackBits(&addressBits, address, bitCount)
 
 		// find the starting point
-		var node *Node
+		var node *treeNode
 		if addressBits[0] == false {
 			node = t.root.Left
 		} else {
@@ -360,12 +360,12 @@ func (t *Tree) Add(address []byte, bitCount uint8, tag interface{}) error {
 	unpackBits(&addressBits, address, bitCount)
 
 	// root node doesn't have any prefix, so find the starting point
-	var node *Node
+	var node *treeNode
 	parent := t.root
 	if addressBits[0] == false {
 		if t.root.Left == nil {
 			// one of the base cases
-			t.root.Left = NewNode(address, bitCount)
+			t.root.Left = newTreeNode(address, bitCount)
 			t.root.Left.Tags = []interface{}{tag}
 
 			return nil
@@ -374,7 +374,7 @@ func (t *Tree) Add(address []byte, bitCount uint8, tag interface{}) error {
 	} else {
 		if t.root.Right == nil {
 			// one of the base cases
-			t.root.Right = NewNode(address, bitCount)
+			t.root.Right = newTreeNode(address, bitCount)
 			t.root.Right.Tags = []interface{}{tag}
 
 			return nil
@@ -410,7 +410,7 @@ func (t *Tree) Add(address []byte, bitCount uint8, tag interface{}) error {
 			}
 
 			// the input address is shorter than the match found - need to create a new parent
-			newNode := NewNode(packBits(addressBits), matchCount)
+			newNode := newTreeNode(packBits(addressBits), matchCount)
 			newNode.Tags = []interface{}{tag}
 
 			node.Prefix = packBits(thisNodeBits[matchCount:]) // remove the prefix that matched
@@ -447,7 +447,7 @@ func (t *Tree) Add(address []byte, bitCount uint8, tag interface{}) error {
 			if !addressBits[0] {
 				if node.Left == nil {
 					// nothing to the left - create a node there
-					node.Left = NewNode(packBits(addressBits), uint8(len(addressBits)))
+					node.Left = newTreeNode(packBits(addressBits), uint8(len(addressBits)))
 					node.Left.Tags = []interface{}{tag}
 
 					return nil
@@ -462,7 +462,7 @@ func (t *Tree) Add(address []byte, bitCount uint8, tag interface{}) error {
 			// node didn't belong on left - so, belongs on right
 			if node.Right == nil {
 				// nothing on the right - create a node there
-				node.Right = NewNode(packBits(addressBits), uint8(len(addressBits)))
+				node.Right = newTreeNode(packBits(addressBits), uint8(len(addressBits)))
 				node.Right.Tags = []interface{}{tag}
 
 				return nil
@@ -475,7 +475,7 @@ func (t *Tree) Add(address []byte, bitCount uint8, tag interface{}) error {
 		}
 
 		// partial match with this node - need to create a new parent with the matched prefix
-		newNode := NewNode(packBits(addressBits[:matchCount]), matchCount)
+		newNode := newTreeNode(packBits(addressBits[:matchCount]), matchCount)
 
 		// see where we're moving this node to, based on the next bit after the match
 		node.Prefix = packBits(thisNodeBits[matchCount:]) // remove the prefix that matched
@@ -483,7 +483,7 @@ func (t *Tree) Add(address []byte, bitCount uint8, tag interface{}) error {
 		node.updateBools()
 
 		// create the new node for the match
-		matchedNode := NewNode(packBits(addressBits[matchCount:]), uint8(len(addressBits))-matchCount)
+		matchedNode := newTreeNode(packBits(addressBits[matchCount:]), uint8(len(addressBits))-matchCount)
 		matchedNode.Tags = []interface{}{tag}
 
 		if !thisNodeBits[matchCount] {
