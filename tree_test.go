@@ -97,23 +97,6 @@ func BenchmarkUnpackBits(b *testing.B) {
 	}
 }
 
-//func BenchmarkUnpackBits2(b *testing.B) {
-//    test := []byte{byte(5), byte(6), byte(7), byte(8)} // 32-bit v4 IP address
-//    bits := make([]bool, 32)
-
-//    b.ResetTimer()
-//    for n := 0; n < b.N; n++ {
-//        unpackBits2(&bits, test, 1)
-//        unpackBits2(&bits, test, 2)
-//        unpackBits2(&bits, test, 3)
-//        unpackBits2(&bits, test, 4)
-//        unpackBits2(&bits, test, 5)
-//        unpackBits2(&bits, test, 6)
-//        unpackBits2(&bits, test, 7)
-//        unpackBits2(&bits, test, 8)
-//    }
-//}
-
 func TestPackBits(t *testing.T) {
 	// test #1 - two full bytes worth of data
 	bits := []bool{
