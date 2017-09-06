@@ -35,6 +35,15 @@ func (s *Searcher) FindTags(address []byte, bitCount uint8, filterFunc func(inte
 	return s.tree.findTags(s, address, bitCount, filterFunc)
 }
 
+// FindDeepestTag looks through the tree for all tags that match the input address, which includes
+// nodes that are an exact or partial match, then returns the most specific match - that is, the deepest in the tree.
+// - filterFunc can be nil to return all records. If set, then each entry is run through it - include records that return true
+func (s *Searcher) FindDeepestTag(address []byte, bitCount uint8, filterFunc func(interface{}) bool) (interface{}, error) {
+	s.buff1 = s.buff1[:0]
+
+	return s.tree.findDeepestTag(s, address, bitCount, filterFunc)
+}
+
 // newTreeNode returns a new node
 func newTreeNode(prefix []uint8, prefixLength uint8) *treeNode {
 	prefixBools := make([]bool, prefixLength)
@@ -110,6 +119,14 @@ func (t *Tree) FindTags(address []byte, bitCount uint8, filterFunc func(interfac
 	return t.findTags(searcher, address, bitCount, filterFunc)
 }
 
+// FindDeepestTag looks through the tree for all tags that match the input address, which includes
+// nodes that are an exact or partial match, then returns the most specific match - that is, the deepest in the tree.
+// - filterFunc can be nil to return all records. If set, then each entry is run through it - include records that return true
+func (t *Tree) FindDeepestTag(address []byte, bitCount uint8, filterFunc func(interface{}) bool) (interface{}, error) {
+	searcher := t.GetSearcher()
+	return t.findDeepestTag(searcher, address, bitCount, filterFunc)
+}
+
 func (t *Tree) findTags(searcher *Searcher, address []byte, bitCount uint8, filterFunc func(interface{}) bool) ([]interface{}, error) {
 	if bitCount > t.addressSize {
 		return nil, fmt.Errorf("bitcount of %d is too long for the tree, which has an address size of %d bits", bitCount, t.addressSize)
@@ -173,6 +190,88 @@ func (t *Tree) findTags(searcher *Searcher, address []byte, bitCount uint8, filt
 		// matched the full node - get its tags, and continue on
 		if node.Tags != nil && len(node.Tags) > 0 {
 			filterAndAppend(node.Tags)
+		}
+
+		if matchCount == uint8(len(searcher.buff1)) {
+			// exact match - we're done
+			return ret, nil
+		}
+
+		searcher.buff1 = searcher.buff1[matchCount:] // chop off the bits we've already matched
+		if searcher.buff1[0] == false {
+			node = node.Left
+		} else {
+			node = node.Right
+		}
+	}
+}
+
+func (t *Tree) findDeepestTag(searcher *Searcher, address []byte, bitCount uint8, filterFunc func(interface{}) bool) (interface{}, error) {
+	if bitCount > t.addressSize {
+		return nil, fmt.Errorf("bitcount of %d is too long for the tree, which has an address size of %d bits", bitCount, t.addressSize)
+	}
+	if bitCount > uint8(len(address)*8) {
+		return nil, fmt.Errorf("not enough bits (%d) for the input bitcount %d", len(address)*8, bitCount)
+	}
+
+	// add common tags
+	var ret interface{}
+	filterAndSwap := func(tags []interface{}) {
+		if filterFunc == nil {
+			if len(tags) > 0 {
+				ret = tags[0]
+			}
+		} else {
+			for _, tag := range tags {
+				if filterFunc(tag) {
+					ret = tag
+					break
+				}
+			}
+		}
+	}
+
+	if t.root.Tags != nil && len(t.root.Tags) > 0 {
+		filterAndSwap(t.root.Tags)
+	}
+
+	if address == nil {
+		// caller just looking for root tags
+		return ret, nil
+	}
+
+	// unpack the binary address into an array of booleans, reusing searcher.buff1 slice
+	unpackBits(&searcher.buff1, address, bitCount)
+
+	// find the starting point
+	var node *treeNode
+	if searcher.buff1[0] == false {
+		node = t.root.Left
+	} else {
+		node = t.root.Right
+	}
+
+	// restore buff1 when done, since we chop off the left side of it while searching
+	buff1Original := searcher.buff1
+	defer func() {
+		searcher.buff1 = buff1Original
+	}()
+
+	// go down the tree
+	for {
+		if node == nil {
+			return ret, nil
+		}
+
+		matchCount := countMatches(searcher.buff1, node.PrefixBools)
+		if matchCount < node.PrefixLength {
+			// didn't match all of the node's prefixes - stop traversing
+			return ret, nil
+		}
+
+		// matched the full node - get its tags, and continue on
+		if node.Tags != nil && len(node.Tags) > 0 {
+			filterAndSwap(node.Tags)
 		}
 
 		if matchCount == uint8(len(searcher.buff1)) {

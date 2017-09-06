@@ -22,6 +22,30 @@ func TestSimpleTree(t *testing.T) {
 	assert.Equal(t, "Tag-32", tags[31].(string))
 	assert.Equal(t, "Tag-31", tags[30].(string))
 	assert.Equal(t, "Tag-1", tags[0].(string))
+
+	tags, err = tree.FindTags([]byte{63, 3, 0, 1}, 32, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(tags))
+	assert.Equal(t, "Tag-1", tags[0].(string))
+
+	// find deepest tag: match at lowest level
+	tag, err := tree.FindDeepestTag([]byte{127, 0, 0, 1}, 32, nil)
+	assert.NotNil(t, tag)
+	assert.Equal(t, "Tag-32", tag.(string))
+
+	// find deepest tag: match at top level
+	tag, err = tree.FindDeepestTag([]byte{63, 5, 4, 3}, 32, nil)
+	assert.NotNil(t, tag)
+	assert.Equal(t, "Tag-1", tag.(string))
+
+	// find deepest tag: match at mid level
+	tag, err = tree.FindDeepestTag([]byte{119, 5, 4, 3}, 32, nil)
+	assert.NotNil(t, tag)
+	assert.Equal(t, "Tag-4", tag.(string))
+
+	// find deepest tag: no match
+	tag, err = tree.FindDeepestTag([]byte{128, 4, 3, 2}, 32, nil)
+	assert.Nil(t, tag)
 }
 
 func TestUnpackBits(t *testing.T) {
