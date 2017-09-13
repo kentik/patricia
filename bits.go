@@ -1,8 +1,4 @@
-package template
-
-import (
-	"github.com/kentik/patricia"
-)
+package patricia
 
 var _len8tab = [256]uint8{
 	0x00, 0x01, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
@@ -38,8 +34,8 @@ func initBuildLeftMasks() {
 	}
 }
 
-// leadingZeros32 returns the number of leading zero bits in x; the result is 32 for x == 0.
-func leadingZeros32(x uint32) (n int) {
+// LeadingZeros32 returns the number of leading zero bits in x; the result is 32 for x == 0.
+func LeadingZeros32(x uint32) (n int) {
 	if x >= 1<<16 {
 		x >>= 16
 		n = 16
@@ -52,7 +48,7 @@ func leadingZeros32(x uint32) (n int) {
 }
 
 // LeadingZeros64 returns the number of leading zero bits in x; the result is 64 for x == 0.
-func leadingZeros64(x uint64) (n int) {
+func LeadingZeros64(x uint64) (n int) {
 	if x >= 1<<32 {
 		x >>= 32
 		n = 32
@@ -68,12 +64,13 @@ func leadingZeros64(x uint64) (n int) {
 	return 64 - n - int(_len8tab[x])
 }
 
-// merge two 32-bit prefixes, returning new prefix, new length
-func mergePrefixes32(left uint32, leftLength uint, right uint32, rightLength uint) (uint32, uint) {
+// MergePrefixes32 merges two 32-bit prefixes, returning new prefix, new length
+func MergePrefixes32(left uint32, leftLength uint, right uint32, rightLength uint) (uint32, uint) {
 	return (left & _leftMasks32[leftLength]) | ((right & _leftMasks32[rightLength]) >> leftLength), (leftLength + rightLength)
 }
 
-func mergePrefixes64(leftLeft uint64, leftRight uint64, leftLength uint, rightLeft uint64, rightRight uint64, rightLength uint) (uint64, uint64, uint) {
+// MergePrefixes64 merges two pairs of uint64s, returning a new prefix, new length
+func MergePrefixes64(leftLeft uint64, leftRight uint64, leftLength uint, rightLeft uint64, rightRight uint64, rightLength uint) (uint64, uint64, uint) {
 	// mask the left 128 bits
 	if leftLength <= 64 {
 		leftLeft &= _leftMasks64[leftLength]
@@ -91,7 +88,7 @@ func mergePrefixes64(leftLeft uint64, leftRight uint64, leftLength uint, rightLe
 	}
 
 	// shift the right 128 bits to the right
-	rightLeft, rightRight = patricia.ShiftRightIPv6(rightLeft, rightRight, leftLength)
+	rightLeft, rightRight = ShiftRightIPv6(rightLeft, rightRight, leftLength)
 
 	// now merge the two
 	return leftLeft | rightLeft, leftRight | rightRight, leftLength + rightLength

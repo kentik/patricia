@@ -1,4 +1,4 @@
-package template
+package patricia
 
 import (
 	"testing"
@@ -30,11 +30,11 @@ func TestLeftMasks(t *testing.T) {
 }
 
 func TestMergePrefixes32(t *testing.T) {
-	newPrefix, newLength := mergePrefixes32(uint32(0x88803000), uint(4), uint32(0x8FE30000), uint(4))
+	newPrefix, newLength := MergePrefixes32(uint32(0x88803000), uint(4), uint32(0x8FE30000), uint(4))
 	assert.Equal(t, uint32(0x88000000), newPrefix)
 	assert.Equal(t, uint(8), newLength)
 
-	newPrefix, newLength = mergePrefixes32(uint32(0x80000000), 4, uint32(0xFFFFFFFF), 0)
+	newPrefix, newLength = MergePrefixes32(uint32(0x80000000), 4, uint32(0xFFFFFFFF), 0)
 	assert.Equal(t, uint32(0x80000000), newPrefix)
 	assert.Equal(t, uint(4), newLength)
 }

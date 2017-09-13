@@ -1,4 +1,4 @@
-package template
+package patricia
 
 func init() {
 	initBuildLeftMasks()
