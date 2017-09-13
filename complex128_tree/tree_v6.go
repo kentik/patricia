@@ -283,7 +283,7 @@ func (t *TreeV6) Delete(address *patricia.IPv6Address, matchFunc MatchesFunc, ma
 			parent.Right = targetNode.Right
 
 			// need to update the parent prefix to include target node's
-			parent.prefixLeft, parent.prefixRight, parent.prefixLength = mergePrefixes64(parent.prefixLeft, parent.prefixRight, parent.prefixLength, targetNode.prefixLeft, targetNode.prefixRight, targetNode.prefixLength)
+			parent.prefixLeft, parent.prefixRight, parent.prefixLength = patricia.MergePrefixes64(parent.prefixLeft, parent.prefixRight, parent.prefixLength, targetNode.prefixLeft, targetNode.prefixRight, targetNode.prefixLength)
 		}
 	} else if targetNode.Left != nil {
 		// target node only has only left child
@@ -295,7 +295,7 @@ func (t *TreeV6) Delete(address *patricia.IPv6Address, matchFunc MatchesFunc, ma
 		}
 
 		// need to update the child node prefix to include target node's
-		targetNode.Left.prefixLeft, targetNode.Left.prefixRight, targetNode.Left.prefixLength = mergePrefixes64(targetNode.prefixLeft, targetNode.prefixRight, targetNode.prefixLength, targetNode.Left.prefixLeft, targetNode.Left.prefixRight, targetNode.Left.prefixLength)
+		targetNode.Left.prefixLeft, targetNode.Left.prefixRight, targetNode.Left.prefixLength = patricia.MergePrefixes64(targetNode.prefixLeft, targetNode.prefixRight, targetNode.prefixLength, targetNode.Left.prefixLeft, targetNode.Left.prefixRight, targetNode.Left.prefixLength)
 	} else if targetNode.Right != nil {
 		// target node has only right child
 
@@ -307,7 +307,7 @@ func (t *TreeV6) Delete(address *patricia.IPv6Address, matchFunc MatchesFunc, ma
 		}
 
 		// need to update the child node prefix to include target node's
-		targetNode.Right.prefixLeft, targetNode.Right.prefixRight, targetNode.Right.prefixLength = mergePrefixes64(targetNode.prefixLeft, targetNode.prefixRight, targetNode.prefixLength, targetNode.Right.prefixLeft, targetNode.Right.prefixRight, targetNode.Right.prefixLength)
+		targetNode.Right.prefixLeft, targetNode.Right.prefixRight, targetNode.Right.prefixLength = patricia.MergePrefixes64(targetNode.prefixLeft, targetNode.prefixRight, targetNode.prefixLength, targetNode.Right.prefixLeft, targetNode.Right.prefixRight, targetNode.Right.prefixLength)
 	} else {
 		// target node has no children
 		if parent.Left == targetNode {

@@ -37,7 +37,7 @@ func (n *treeNodeV4) MatchCount(address *patricia.IPv4Address) uint {
 		length = address.Length
 	}
 
-	matches := uint(leadingZeros32(n.prefix ^ address.Address))
+	matches := uint(patricia.LeadingZeros32(n.prefix ^ address.Address))
 	if matches > length {
 		return length
 	}
@@ -59,9 +59,9 @@ func (n *treeNodeV6) MatchCount(address *patricia.IPv6Address) uint {
 		length = n.prefixLength
 	}
 
-	matches := uint(leadingZeros64(n.prefixLeft ^ address.Left))
+	matches := uint(patricia.LeadingZeros64(n.prefixLeft ^ address.Left))
 	if matches == 64 && length > 64 {
-		matches += uint(leadingZeros64(n.prefixRight ^ address.Right))
+		matches += uint(patricia.LeadingZeros64(n.prefixRight ^ address.Right))
 	}
 	if matches > length {
 		return length

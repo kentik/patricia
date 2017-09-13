@@ -286,7 +286,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 			parent.Right = targetNode.Right
 
 			// need to update the parent prefix to include target node's
-			parent.prefix, parent.prefixLength = mergePrefixes32(parent.prefix, parent.prefixLength, targetNode.prefix, targetNode.prefixLength)
+			parent.prefix, parent.prefixLength = patricia.MergePrefixes32(parent.prefix, parent.prefixLength, targetNode.prefix, targetNode.prefixLength)
 		}
 	} else if targetNode.Left != nil {
 		// target node only has only left child
@@ -298,7 +298,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 		}
 
 		// need to update the child node prefix to include target node's
-		targetNode.Left.prefix, targetNode.Left.prefixLength = mergePrefixes32(targetNode.prefix, targetNode.prefixLength, targetNode.Left.prefix, targetNode.Left.prefixLength)
+		targetNode.Left.prefix, targetNode.Left.prefixLength = patricia.MergePrefixes32(targetNode.prefix, targetNode.prefixLength, targetNode.Left.prefix, targetNode.Left.prefixLength)
 	} else if targetNode.Right != nil {
 		// target node has only right child
 
@@ -310,7 +310,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 		}
 
 		// need to update the child node prefix to include target node's
-		targetNode.Right.prefix, targetNode.Right.prefixLength = mergePrefixes32(targetNode.prefix, targetNode.prefixLength, targetNode.Right.prefix, targetNode.Right.prefixLength)
+		targetNode.Right.prefix, targetNode.Right.prefixLength = patricia.MergePrefixes32(targetNode.prefix, targetNode.prefixLength, targetNode.Right.prefix, targetNode.Right.prefixLength)
 	} else {
 		// target node has no children
 		if parent.Left == targetNode {
