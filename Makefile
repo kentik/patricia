@@ -37,6 +37,14 @@ codegen-%:
 	rm -f ./${*}_array_tree/types.go
 	( cd "${*}_array_tree" && sed -i "s/GeneratedType/[]${*}/g" *.go )
 	( cd "${*}_array_tree" && sed -i "s/package template/package ${*}_array_tree/g" *.go )
+	#
+	@echo "** generating *$* tree"
+	mkdir -p "./${*}_ptr_tree"
+	cp -pa template/*.go "./${*}_ptr_tree"
+	rm -f ./${*}_ptr_tree/*_test.go
+	rm -f ./${*}_ptr_tree/types.go
+	( cd "${*}_ptr_tree" && sed -i "s/GeneratedType/\*${*}/g" *.go )
+	( cd "${*}_ptr_tree" && sed -i "s/package template/package ${*}_ptr_tree/g" *.go )
 
 .PHONY: clean
 clean:
