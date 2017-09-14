@@ -48,6 +48,28 @@ func BenchmarkFindDeepestTag(b *testing.B) {
 	}
 }
 
+func BenchmarkBuildTreeAndFindDeepestTag(b *testing.B) {
+	ipv4a := ipv4FromBytes([]byte{98, 139, 183, 24}, 32)
+	ipv4b := ipv4FromBytes([]byte{198, 186, 190, 179}, 32)
+	ipv4c := ipv4FromBytes([]byte{151, 101, 124, 84}, 32)
+
+	search1 := ipv4FromBytes([]byte{98, 139, 183, 24}, 32)
+	search2 := ipv4FromBytes([]byte{198, 186, 190, 179}, 32)
+	search3 := ipv4FromBytes([]byte{151, 101, 124, 84}, 32)
+
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		tree := NewTreeV4()
+		tree.Add(&patricia.IPv4Address{Address: ipv4a.Address, Length: ipv4a.Length}, "tagA")
+		tree.Add(&patricia.IPv4Address{Address: ipv4b.Address, Length: ipv4b.Length}, "tagB")
+		tree.Add(&patricia.IPv4Address{Address: ipv4c.Address, Length: ipv4c.Length}, "tagC")
+
+		tree.FindDeepestTag(&patricia.IPv4Address{Address: search1.Address, Length: search1.Length})
+		tree.FindDeepestTag(&patricia.IPv4Address{Address: search2.Address, Length: search2.Length})
+		tree.FindDeepestTag(&patricia.IPv4Address{Address: search3.Address, Length: search3.Length})
+	}
+}
+
 func TestSimpleTree1(t *testing.T) {
 	tree := NewTreeV4()
 
