@@ -29,10 +29,10 @@ func BenchmarkFindTags(b *testing.B) {
 	tree.Add(ipv4FromBytes([]byte{160, 0, 0, 0}, 2), tagB) // 160 -> 128
 	tree.Add(ipv4FromBytes([]byte{128, 3, 6, 240}, 32), tagC)
 
-	address := ipv4FromBytes([]byte{128, 142, 133, 1}, 32)
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		tree.FindTags(address)
+		address := patricia.NewIPv4Address(uint32(2156823809), 32)
+		tree.FindTags(&address)
 	}
 }
 
@@ -41,32 +41,39 @@ func BenchmarkFindDeepestTag(b *testing.B) {
 	for i := 32; i > 0; i-- {
 		tree.Add(ipv4FromBytes([]byte{127, 0, 0, 1}, i), fmt.Sprintf("Tag-%d", i))
 	}
-	address := ipv4FromBytes([]byte{127, 0, 0, 1}, 32)
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		tree.FindDeepestTag(address)
+		address := patricia.NewIPv4Address(uint32(2130706433), 32)
+		tree.FindDeepestTag(&address)
 	}
 }
 
 func BenchmarkBuildTreeAndFindDeepestTag(b *testing.B) {
-	ipv4a := ipv4FromBytes([]byte{98, 139, 183, 24}, 32)
-	ipv4b := ipv4FromBytes([]byte{198, 186, 190, 179}, 32)
-	ipv4c := ipv4FromBytes([]byte{151, 101, 124, 84}, 32)
-
-	search1 := ipv4FromBytes([]byte{98, 139, 183, 24}, 32)
-	search2 := ipv4FromBytes([]byte{198, 186, 190, 179}, 32)
-	search3 := ipv4FromBytes([]byte{151, 101, 124, 84}, 32)
-
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		tree := NewTreeV4()
-		tree.Add(&patricia.IPv4Address{Address: ipv4a.Address, Length: ipv4a.Length}, "tagA")
-		tree.Add(&patricia.IPv4Address{Address: ipv4b.Address, Length: ipv4b.Length}, "tagB")
-		tree.Add(&patricia.IPv4Address{Address: ipv4c.Address, Length: ipv4c.Length}, "tagC")
 
-		tree.FindDeepestTag(&patricia.IPv4Address{Address: search1.Address, Length: search1.Length})
-		tree.FindDeepestTag(&patricia.IPv4Address{Address: search2.Address, Length: search2.Length})
-		tree.FindDeepestTag(&patricia.IPv4Address{Address: search3.Address, Length: search3.Length})
+		// populate
+
+		address := patricia.NewIPv4Address(uint32(1653323544), 32)
+		tree.Add(&address, "tagA")
+
+		address = patricia.NewIPv4Address(uint32(3334127283), 32)
+		tree.Add(&address, "tagB")
+
+		address = patricia.NewIPv4Address(uint32(2540010580), 32)
+		tree.Add(&address, "tagC")
+
+		// search
+
+		address = patricia.NewIPv4Address(uint32(1653323544), 32)
+		tree.FindDeepestTag(&address)
+
+		address = patricia.NewIPv4Address(uint32(3334127283), 32)
+		tree.FindDeepestTag(&address)
+
+		address = patricia.NewIPv4Address(uint32(2540010580), 32)
+		tree.FindDeepestTag(&address)
 	}
 }
 

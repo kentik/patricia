@@ -10,7 +10,7 @@ import (
 // ParseIPFromString parses a string address, returning a v4 or v6 IP address
 // TODO: make this more performant:
 //       - is the fmt.Sprintf necessary?
-func ParseIPFromString(address string) (*IPv4Address, *IPv6Address, error) {
+func ParseIPFromString(address string) (IPv4Address, IPv6Address, error) {
 	var err error
 
 	// see if there's a CIDR
@@ -19,10 +19,10 @@ func ParseIPFromString(address string) (*IPv4Address, *IPv6Address, error) {
 	if len(parts) == 2 {
 		c, err := strconv.ParseUint(parts[1], 10, 8)
 		if err != nil {
-			return nil, nil, fmt.Errorf("couldn't parse CIDR to int: %s", err)
+			return IPv4Address{}, IPv6Address{}, fmt.Errorf("couldn't parse CIDR to int: %s", err)
 		}
 		if c > 128 {
-			return nil, nil, fmt.Errorf("Invalid CIDR: %d", c)
+			return IPv4Address{}, IPv6Address{}, fmt.Errorf("Invalid CIDR: %d", c)
 		}
 		cidr = int(c)
 	}
@@ -40,7 +40,7 @@ func ParseIPFromString(address string) (*IPv4Address, *IPv6Address, error) {
 				cidr = 32
 			}
 
-			return NewIPv4AddressFromBytes(v4Addr, uint(cidr)), nil, nil
+			return NewIPv4AddressFromBytes(v4Addr, uint(cidr)), IPv6Address{}, nil
 		}
 	}
 
@@ -56,9 +56,9 @@ func ParseIPFromString(address string) (*IPv4Address, *IPv6Address, error) {
 			if cidr == -1 {
 				cidr = 128
 			}
-			return nil, NewIPv6Address(v6Addr, uint(cidr)), nil
+			return IPv4Address{}, NewIPv6Address(v6Addr, uint(cidr)), nil
 		}
 	}
 
-	return nil, nil, fmt.Errorf("couldn't parse either v4 or v6 address")
+	return IPv4Address{}, IPv6Address{}, fmt.Errorf("couldn't parse either v4 or v6 address")
 }

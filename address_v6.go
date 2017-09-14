@@ -12,15 +12,15 @@ type IPv6Address struct {
 }
 
 // NewIPv6Address creates an address from the input IPv6 bytes (must be length 16)
-func NewIPv6Address(address []byte, length uint) *IPv6Address {
+func NewIPv6Address(address []byte, length uint) IPv6Address {
 	if len(address) < 16 {
-		return &IPv6Address{
+		return IPv6Address{
 			Left:   0,
 			Right:  0,
 			Length: 0,
 		}
 	}
-	return &IPv6Address{
+	return IPv6Address{
 		Left:   binary.BigEndian.Uint64(address),
 		Right:  binary.BigEndian.Uint64(address[8:]),
 		Length: length,
