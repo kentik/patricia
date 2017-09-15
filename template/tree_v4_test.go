@@ -310,15 +310,30 @@ func TestDelete1(t *testing.T) {
 	tagZ := "tagZ"
 
 	tree := NewTreeV4()
-	assert.Equal(t, 1, countNodes(tree.root))
+	assert.Equal(t, 1, tree.countNodes(1))
 	tree.Add(ipv4FromBytes([]byte{8, 7, 6, 5}, 0), tagZ) // default
-	assert.Equal(t, 1, countNodes(tree.root))
+	assert.Equal(t, 1, tree.countNodes(1))
+	assert.Zero(t, len(tree.availableIndexes))
+	assert.Equal(t, 2, len(tree.nodes)) // empty first node plus root
+
 	tree.Add(ipv4FromBytes([]byte{128, 3, 0, 5}, 7), tagA) // 1000000
-	assert.Equal(t, 2, countNodes(tree.root))
+	assert.Equal(t, 2, tree.countNodes(1))
+	assert.Equal(t, 3, len(tree.nodes))
+
 	tree.Add(ipv4FromBytes([]byte{128, 5, 1, 1}, 2), tagB) // 10
-	assert.Equal(t, 3, countNodes(tree.root))
+	assert.Equal(t, 3, tree.countNodes(1))
+	assert.Equal(t, 4, len(tree.nodes))
+
 	tree.Add(ipv4FromBytes([]byte{128, 3, 6, 240}, 32), tagC)
-	assert.Equal(t, 4, countNodes(tree.root))
+	assert.Equal(t, 4, tree.countNodes(1))
+	assert.Equal(t, 5, len(tree.nodes))
+
+	// verify status of internal nodes collections
+	assert.Zero(t, len(tree.availableIndexes))
+	assert.Equal(t, "tagZ", tree.nodes[1].Tags[0])
+	assert.Equal(t, "tagA", tree.nodes[2].Tags[0])
+	assert.Equal(t, "tagB", tree.nodes[3].Tags[0])
+	assert.Equal(t, "tagC", tree.nodes[4].Tags[0])
 
 	// three tags in a hierarchy - ask for an exact match, receive all 3 and the root
 	tags, err := tree.FindTags(ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
@@ -330,8 +345,8 @@ func TestDelete1(t *testing.T) {
 	count, err = tree.Delete(ipv4FromBytes([]byte{9, 9, 9, 9}, 32), matchFunc, "bad tag")
 	assert.NoError(t, err)
 	assert.Equal(t, 0, count)
-	assert.Equal(t, 4, countNodes(tree.root))
-	assert.Equal(t, 4, countTags(tree.root))
+	assert.Equal(t, 4, tree.countNodes(1))
+	assert.Equal(t, 4, tree.countTags(1))
 
 	// 2. delete a tag on an address that exists, but doesn't have the tag
 	count, err = tree.Delete(ipv4FromBytes([]byte{128, 3, 6, 240}, 32), matchFunc, "bad tag")
@@ -342,15 +357,16 @@ func TestDelete1(t *testing.T) {
 	tags, err = tree.FindTags(ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
 	assert.NoError(t, err)
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC, tagZ}))
-	assert.Equal(t, 4, countNodes(tree.root))
-	assert.Equal(t, 4, countTags(tree.root))
+	assert.Equal(t, 4, tree.countNodes(1))
+	assert.Equal(t, 4, tree.countTags(1))
 
 	// 3. delete the default/root tag
 	count, err = tree.Delete(ipv4FromBytes([]byte{0, 0, 0, 0}, 0), matchFunc, "tagZ")
 	assert.NoError(t, err)
 	assert.Equal(t, 1, count)
-	assert.Equal(t, 4, countNodes(tree.root)) // doesn't delete anything
-	assert.Equal(t, 3, countTags(tree.root))
+	assert.Equal(t, 4, tree.countNodes(1)) // doesn't delete anything
+	assert.Equal(t, 3, tree.countTags(1))
+	assert.Equal(t, 0, len(tree.availableIndexes))
 
 	// three tags in a hierarchy - ask for an exact match, receive all 3, not the root, which we deleted
 	tags, err = tree.FindTags(ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
@@ -366,8 +382,10 @@ func TestDelete1(t *testing.T) {
 	tags, err = tree.FindTags(ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
 	assert.NoError(t, err)
 	assert.True(t, tagArraysEqual(tags, []string{tagB, tagC}))
-	assert.Equal(t, 3, countNodes(tree.root))
-	assert.Equal(t, 2, countTags(tree.root))
+	assert.Equal(t, 3, tree.countNodes(1))
+	assert.Equal(t, 2, tree.countTags(1))
+	assert.Equal(t, 1, len(tree.availableIndexes))
+	assert.Equal(t, uint(2), tree.availableIndexes[0])
 
 	// 5. delete tag B
 	count, err = tree.Delete(ipv4FromBytes([]byte{128, 0, 0, 0}, 2), matchFunc, "tagB")
@@ -378,8 +396,21 @@ func TestDelete1(t *testing.T) {
 	tags, err = tree.FindTags(ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
 	assert.NoError(t, err)
 	assert.True(t, tagArraysEqual(tags, []string{tagC}))
-	assert.Equal(t, 2, countNodes(tree.root))
-	assert.Equal(t, 1, countTags(tree.root))
+	assert.Equal(t, 2, tree.countNodes(1))
+	assert.Equal(t, 1, tree.countTags(1))
+	assert.Equal(t, 2, len(tree.availableIndexes))
+	assert.Equal(t, uint(3), tree.availableIndexes[1])
+
+	// add tagE & tagF to the same node
+	tree.Add(ipv4FromBytes([]byte{1, 3, 6, 240}, 32), "tagE")
+	tree.Add(ipv4FromBytes([]byte{1, 3, 6, 240}, 32), "tagF")
+	assert.Equal(t, 3, tree.countNodes(1))
+	assert.Equal(t, 3, tree.countTags(1))
+
+	// this should be recycling tagB
+	assert.Equal(t, 1, len(tree.availableIndexes))
+	assert.Equal(t, uint(2), tree.availableIndexes[0])
+	assert.Equal(t, "tagE", tree.nodes[3].Tags[0])
 
 	// 6. delete tag C
 	count, err = tree.Delete(ipv4FromBytes([]byte{128, 3, 6, 240}, 32), matchFunc, "tagC")
@@ -390,8 +421,8 @@ func TestDelete1(t *testing.T) {
 	tags, err = tree.FindTags(ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
 	assert.NoError(t, err)
 	assert.True(t, tagArraysEqual(tags, []string{}))
-	assert.Equal(t, 1, countNodes(tree.root))
-	assert.Equal(t, 0, countTags(tree.root))
+	assert.Equal(t, 2, tree.countNodes(1))
+	assert.Equal(t, 2, tree.countTags(1))
 }
 
 func payloadToByteArrays(tags []GeneratedType) [][]byte {
