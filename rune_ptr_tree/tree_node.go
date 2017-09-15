@@ -22,8 +22,8 @@ func (n *treeNode) AddTag(tag *rune) {
 
 type treeNodeV4 struct {
 	treeNode
-	Left         *treeNodeV4 // left node
-	Right        *treeNodeV4 // right node
+	Left         uint // left node index: 0 for not set
+	Right        uint // right node index: 0 for not set
 	prefix       uint32
 	prefixLength uint
 }
