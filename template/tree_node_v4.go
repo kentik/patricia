@@ -5,11 +5,11 @@ import (
 )
 
 type treeNodeV4 struct {
-	treeNode
 	Left         uint // left node index: -1 for not set
 	Right        uint // right node index: -1 for not set
 	prefix       uint32
 	prefixLength uint
+	TagCount     uint
 }
 
 // See how many bits match the input address

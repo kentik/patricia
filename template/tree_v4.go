@@ -16,6 +16,7 @@ type FilterFunc func(payload GeneratedType) bool
 type TreeV4 struct {
 	nodes            []treeNodeV4 // root is always at [1] - [0] is unused
 	availableIndexes []uint       // a place to store node indexes that we deleted, and are available
+	tags             map[uint64]GeneratedType
 }
 
 // NewTree returns a new Tree
@@ -23,7 +24,57 @@ func NewTreeV4(startingCapacity uint) *TreeV4 {
 	return &TreeV4{
 		nodes:            make([]treeNodeV4, 2, startingCapacity), // index 0 is skipped, 1 is root
 		availableIndexes: make([]uint, 0),
+		tags:             make(map[uint64]GeneratedType),
 	}
+}
+
+func (t *TreeV4) addTag(tag GeneratedType, nodeIndex uint) {
+	tagCount := t.nodes[nodeIndex].TagCount
+	t.tags[(uint64(nodeIndex)<<32)+(uint64(tagCount))] = tag
+	t.nodes[nodeIndex].TagCount++
+}
+
+func (t *TreeV4) tagsForNode(nodeIndex uint) []GeneratedType {
+	// TODO: clean up the typing in here, between uint, uint64
+	tagCount := t.nodes[nodeIndex].TagCount
+	ret := make([]GeneratedType, tagCount)
+	key := uint64(nodeIndex) << 32
+	for i := uint(0); i < tagCount; i++ {
+		ret[i] = t.tags[key+uint64(i)]
+	}
+	return ret
+}
+
+func (t *TreeV4) firstTagForNode(nodeIndex uint) GeneratedType {
+	return t.tags[(uint64(nodeIndex) << 32)]
+}
+
+// delete tags at the input node, returning how many were deleted, and how many are left
+func (t *TreeV4) deleteTag(nodeIndex uint, matchTag GeneratedType, matchFunc MatchesFunc) (int, int) {
+	// WBCTODO: write this properly - this is a hacky get-this-done implementation
+
+	// get tags
+	tags := t.tagsForNode(nodeIndex)
+
+	// delete tags
+	for i := uint(0); i < t.nodes[nodeIndex].TagCount; i++ {
+		delete(t.tags, (uint64(nodeIndex)<<32)+uint64(i))
+	}
+	t.nodes[nodeIndex].TagCount = 0
+
+	// put them back
+	deleteCount := 0
+	keepCount := 0
+	for _, tag := range tags {
+		if matchFunc(tag, matchTag) {
+			deleteCount++
+		} else {
+			// doesn't match - get to keep it
+			t.addTag(tag, nodeIndex)
+			keepCount++
+		}
+	}
+	return deleteCount, keepCount
 }
 
 // create a new node in the tree, return its index
@@ -53,7 +104,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 
 	// handle root tags
 	if address == nil || address.Length == 0 {
-		root.AddTag(tag)
+		t.addTag(tag, 1)
 		return nil
 	}
 
@@ -63,8 +114,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 	if address.Address < _leftmost32Bit {
 		if root.Left == 0 {
 			newNodeIndex := t.newNode(address.Address, address.Length)
-			newNode := &t.nodes[newNodeIndex]
-			newNode.AddTag(tag)
+			t.addTag(tag, newNodeIndex)
 			root.Left = newNodeIndex
 			return nil
 		}
@@ -72,8 +122,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 	} else {
 		if root.Right == 0 {
 			newNodeIndex := t.newNode(address.Address, address.Length)
-			newNode := &t.nodes[newNodeIndex]
-			newNode.AddTag(tag)
+			t.addTag(tag, newNodeIndex)
 			root.Right = newNodeIndex
 			return nil
 		}
@@ -88,14 +137,14 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 
 			if matchCount == node.prefixLength {
 				// the whole prefix matched - we're done!
-				node.AddTag(tag)
+				t.addTag(tag, nodeIndex)
 				return nil
 			}
 
 			// the input address is shorter than the match found - need to create a new, intermediate parent
 			newNodeIndex := t.newNode(address.Address, address.Length)
 			newNode := &t.nodes[newNodeIndex]
-			newNode.AddTag(tag)
+			t.addTag(tag, newNodeIndex)
 
 			// the existing node loses those matching bits, and becomes a child of the new node
 
@@ -134,8 +183,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 				if node.Left == 0 {
 					// nowhere else to go - create a new node here
 					newNodeIndex := t.newNode(address.Address, address.Length)
-					newNode := &t.nodes[newNodeIndex]
-					newNode.AddTag(tag)
+					t.addTag(tag, newNodeIndex)
 					node.Left = newNodeIndex
 					return nil
 				}
@@ -150,8 +198,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 			if node.Right == 0 {
 				// nowhere else to go - create a new node here
 				newNodeIndex := t.newNode(address.Address, address.Length)
-				newNode := &t.nodes[newNodeIndex]
-				newNode.AddTag(tag)
+				t.addTag(tag, newNodeIndex)
 				node.Right = newNodeIndex
 				return nil
 			}
@@ -170,8 +217,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 		address.ShiftLeft(matchCount)
 
 		newNodeIndex := t.newNode(address.Address, address.Length)
-		newNode := &t.nodes[newNodeIndex]
-		newNode.AddTag(tag)
+		t.addTag(tag, newNodeIndex)
 
 		// see where the existing node fits - left or right
 		node.ShiftPrefix(matchCount)
@@ -249,44 +295,17 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 		}
 	}
 
-	if targetNode == nil || !targetNode.HasTags {
+	if targetNode == nil || targetNode.TagCount == 0 {
 		// no tags found
 		return 0, nil
 	}
 
-	// we have tags - see if any need to be deleted
-	deleteCount := 0
-	matchIndices := make(map[int]bool)
-	for index, tagData := range targetNode.Tags {
-		if matchFunc(tagData, matchVal) {
-			matchIndices[index] = true
-			deleteCount++
-		}
-	}
-	if len(matchIndices) == 0 {
-		// node exists, but doesn't have our tag
-		return 0, nil
-	}
-
 	// we have tags to delete - build up a new list with the exact size needed
-	newTagListLength := len(targetNode.Tags) - len(matchIndices)
-	if newTagListLength > 0 {
-		// node will still have tags when we're done with it
-		newTagList := make([]GeneratedType, 0, newTagListLength)
-		for index, tagData := range targetNode.Tags {
-			if _, ok := matchIndices[index]; !ok {
-				newTagList = append(newTagList, tagData)
-			}
-		}
-		targetNode.Tags = newTagList
-
+	deleteCount, remainingTagCount := t.deleteTag(targetNodeIndex, matchVal, matchFunc)
+	if remainingTagCount > 0 {
 		// target node still has tags - we're not deleting it
 		return deleteCount, nil
 	}
-
-	// this node no longer has tags
-	targetNode.Tags = nil
-	targetNode.HasTags = false
 
 	if targetNodeIndex == 1 {
 		// can't delete the root node
@@ -351,8 +370,8 @@ func (t *TreeV4) FindTagsWithFilter(address *patricia.IPv4Address, filterFunc Fi
 	var matchCount uint
 	ret := make([]GeneratedType, 0)
 
-	if root.HasTags {
-		for _, tag := range root.Tags {
+	if root.TagCount > 0 {
+		for _, tag := range t.tagsForNode(1) {
 			if filterFunc(tag) {
 				ret = append(ret, tag)
 			}
@@ -387,8 +406,8 @@ func (t *TreeV4) FindTagsWithFilter(address *patricia.IPv4Address, filterFunc Fi
 		}
 
 		// matched the full node - get its tags, then chop off the bits we've already matched and continue
-		if node.HasTags {
-			for _, tag := range node.Tags {
+		if node.TagCount > 0 {
+			for _, tag := range t.tagsForNode(nodeIndex) {
 				if filterFunc(tag) {
 					ret = append(ret, tag)
 				}
@@ -416,8 +435,8 @@ func (t *TreeV4) FindTags(address *patricia.IPv4Address) ([]GeneratedType, error
 	root := &t.nodes[1]
 	ret := make([]GeneratedType, 0)
 
-	if root.HasTags {
-		ret = append(ret, root.Tags...)
+	if root.TagCount > 0 {
+		ret = append(ret, t.tagsForNode(1)...)
 	}
 
 	if address == nil || address.Length == 0 {
@@ -448,8 +467,8 @@ func (t *TreeV4) FindTags(address *patricia.IPv4Address) ([]GeneratedType, error
 		}
 
 		// matched the full node - get its tags, then chop off the bits we've already matched and continue
-		if node.HasTags {
-			ret = append(ret, node.Tags...)
+		if node.TagCount > 0 {
+			ret = append(ret, t.tagsForNode(nodeIndex)...)
 		}
 
 		if matchCount == address.Length {
@@ -473,8 +492,8 @@ func (t *TreeV4) FindDeepestTag(address *patricia.IPv4Address) (bool, GeneratedT
 	var found bool
 	var ret GeneratedType
 
-	if root.HasTags {
-		ret = root.Tags[0]
+	if root.TagCount > 0 {
+		ret = t.firstTagForNode(1)
 		found = true
 	}
 
@@ -504,8 +523,8 @@ func (t *TreeV4) FindDeepestTag(address *patricia.IPv4Address) (bool, GeneratedT
 		}
 
 		// matched the full node - get its tags, then chop off the bits we've already matched and continue
-		if node.HasTags {
-			ret = node.Tags[0]
+		if node.TagCount > 0 {
+			ret = t.firstTagForNode(nodeIndex)
 			found = true
 		}
 
@@ -537,10 +556,10 @@ func (t *TreeV4) countNodes(nodeIndex uint) int {
 	return nodeCount
 }
 
-func (t *TreeV4) countTags(nodeIndex uint) int {
+func (t *TreeV4) countTags(nodeIndex uint) uint {
 	node := &t.nodes[nodeIndex]
 
-	tagCount := len(node.Tags)
+	tagCount := node.TagCount
 	if node.Left != 0 {
 		tagCount += t.countTags(node.Left)
 	}
