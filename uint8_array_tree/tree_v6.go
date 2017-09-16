@@ -75,7 +75,7 @@ func (t *TreeV6) Add(address *patricia.IPv6Address, tag []uint8) error {
 			// the existing node loses those matching bits, and becomes a child of the new node
 
 			// shift
-			node.ShiftLeft(matchCount)
+			node.ShiftPrefix(matchCount)
 
 			if node.prefixLeft < _leftmost64Bit {
 				newNode.Left = node
@@ -152,7 +152,7 @@ func (t *TreeV6) Add(address *patricia.IPv6Address, tag []uint8) error {
 
 		// see where the existing node fits - left or right
 		// shift
-		node.ShiftLeft(matchCount)
+		node.ShiftPrefix(matchCount)
 		if node.prefixLeft < _leftmost64Bit {
 			newCommonParentNode.Left = node
 			newCommonParentNode.Right = &treeNodeV6{
