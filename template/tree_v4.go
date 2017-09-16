@@ -19,9 +19,9 @@ type TreeV4 struct {
 }
 
 // NewTree returns a new Tree
-func NewTreeV4() *TreeV4 {
+func NewTreeV4(startingCapacity uint) *TreeV4 {
 	return &TreeV4{
-		nodes:            make([]treeNodeV4, 2, 1024),
+		nodes:            make([]treeNodeV4, 2, startingCapacity), // index 0 is skipped, 1 is root
 		availableIndexes: make([]uint, 0),
 	}
 }
@@ -42,6 +42,13 @@ func (t *TreeV4) newNode(prefix uint32, prefixLength uint) uint {
 
 // Add adds a node to the tree
 func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
+	// make sure we have more than enough capacity before we start adding to the tree, which invalidates pointers into the array
+	if cap(t.nodes) < (len(t.nodes) + 10) {
+		temp := make([]treeNodeV4, len(t.nodes), (cap(t.nodes)+1)*2)
+		copy(temp, t.nodes)
+		t.nodes = temp
+	}
+
 	root := &t.nodes[1]
 
 	// handle root tags

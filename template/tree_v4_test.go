@@ -22,7 +22,7 @@ func BenchmarkFindTags(b *testing.B) {
 	tagC := "tagC"
 	tagZ := "tagD"
 
-	tree := NewTreeV4()
+	tree := NewTreeV4(2) // intentionally picking a low number to make sure we resize the underlying collection well
 
 	tree.Add(nil, tagZ) // default
 	tree.Add(ipv4FromBytes([]byte{129, 0, 0, 1}, 7), tagA)
@@ -37,7 +37,7 @@ func BenchmarkFindTags(b *testing.B) {
 }
 
 func BenchmarkFindDeepestTag(b *testing.B) {
-	tree := NewTreeV4()
+	tree := NewTreeV4(2) // intentionally picking a low number to make sure we resize the underlying collection well
 	for i := 32; i > 0; i-- {
 		tree.Add(ipv4FromBytes([]byte{127, 0, 0, 1}, i), fmt.Sprintf("Tag-%d", i))
 	}
@@ -51,7 +51,7 @@ func BenchmarkFindDeepestTag(b *testing.B) {
 func BenchmarkBuildTreeAndFindDeepestTag(b *testing.B) {
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		tree := NewTreeV4()
+		tree := NewTreeV4(2) // intentionally picking a low number to make sure we resize the underlying collection well
 
 		// populate
 
@@ -78,7 +78,7 @@ func BenchmarkBuildTreeAndFindDeepestTag(b *testing.B) {
 }
 
 func TestSimpleTree1(t *testing.T) {
-	tree := NewTreeV4()
+	tree := NewTreeV4(2) // intentionally picking a low number to make sure we resize the underlying collection well
 
 	ipv4a := ipv4FromBytes([]byte{98, 139, 183, 24}, 32)
 	ipv4b := ipv4FromBytes([]byte{198, 186, 190, 179}, 32)
@@ -105,7 +105,7 @@ func TestSimpleTree1(t *testing.T) {
 }
 
 func TestSimpleTree(t *testing.T) {
-	tree := NewTreeV4()
+	tree := NewTreeV4(2) // intentionally picking a low number to make sure we resize the underlying collection well
 
 	for i := 32; i > 0; i-- {
 		err := tree.Add(ipv4FromBytes([]byte{127, 0, 0, 1}, i), fmt.Sprintf("Tag-%d", i))
@@ -192,7 +192,7 @@ func TestTree1FindTags(t *testing.T) {
 	tagC := "tagC"
 	tagZ := "tagD"
 
-	tree := NewTreeV4()
+	tree := NewTreeV4(2)                                 // intentionally picking a low number to make sure we resize the underlying collection well
 	tree.Add(ipv4FromBytes([]byte{1, 2, 3, 4}, 0), tagZ) // default
 	tree.Add(ipv4FromBytes([]byte{129, 0, 0, 1}, 7), tagA)
 	tree.Add(ipv4FromBytes([]byte{160, 0, 0, 0}, 2), tagB) // 160 -> 128
@@ -229,7 +229,7 @@ func TestTree1FindTagsWithFilter(t *testing.T) {
 		return val == tagA || val == tagB
 	}
 
-	tree := NewTreeV4()
+	tree := NewTreeV4(2)                                 // intentionally picking a low number to make sure we resize the underlying collection well
 	tree.Add(ipv4FromBytes([]byte{1, 2, 3, 4}, 0), tagZ) // default
 	tree.Add(ipv4FromBytes([]byte{129, 0, 0, 1}, 7), tagA)
 	tree.Add(ipv4FromBytes([]byte{160, 0, 0, 0}, 2), tagB) // 160 -> 128
@@ -264,7 +264,7 @@ func TestRootNode(t *testing.T) {
 	tagD := "tagD"
 	tagZ := "tagE"
 
-	tree := NewTreeV4()
+	tree := NewTreeV4(2) // intentionally picking a low number to make sure we resize the underlying collection well
 
 	// root node gets tags A & B
 	tree.Add(nil, tagA)
@@ -309,7 +309,7 @@ func TestDelete1(t *testing.T) {
 	tagC := "tagC"
 	tagZ := "tagZ"
 
-	tree := NewTreeV4()
+	tree := NewTreeV4(2) // intentionally picking a low number to make sure we resize the underlying collection well
 	assert.Equal(t, 1, tree.countNodes(1))
 	tree.Add(ipv4FromBytes([]byte{8, 7, 6, 5}, 0), tagZ) // default
 	assert.Equal(t, 1, tree.countNodes(1))
