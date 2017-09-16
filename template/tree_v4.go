@@ -100,8 +100,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 			// the existing node loses those matching bits, and becomes a child of the new node
 
 			// shift
-			node.prefix <<= matchCount
-			node.prefixLength -= matchCount
+			node.ShiftPrefix(matchCount)
 
 			if node.prefix < _leftmost32Bit {
 				newNode.Left = nodeIndex
@@ -128,9 +127,8 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 		if matchCount == node.prefixLength {
 			// partial match - we have to keep traversing
 
-			// shift
-			address.Address <<= matchCount // chop off what's matched so far
-			address.Length -= matchCount
+			// chop off what's matched so far
+			address.ShiftLeft(matchCount)
 
 			if address.Address < _leftmost32Bit {
 				if node.Left == 0 {
@@ -169,17 +167,14 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 		newCommonParentNode := &t.nodes[newCommonParentNodeIndex]
 
 		// shift
-		address.Address <<= matchCount
-		address.Length -= matchCount
+		address.ShiftLeft(matchCount)
 
 		newNodeIndex := t.newNode(address.Address, address.Length)
 		newNode := &t.nodes[newNodeIndex]
 		newNode.AddTag(tag)
 
 		// see where the existing node fits - left or right
-		// shift
-		node.prefix <<= matchCount
-		node.prefixLength -= matchCount
+		node.ShiftPrefix(matchCount)
 		if node.prefix < _leftmost32Bit {
 			newCommonParentNode.Left = nodeIndex
 			newCommonParentNode.Right = newNodeIndex
@@ -245,8 +240,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 
 			// there's still more address - keep traversing
 			parent = node
-			address.Address <<= matchCount
-			address.Length -= matchCount
+			address.ShiftLeft(matchCount)
 			if address.Address < _leftmost32Bit {
 				nodeIndex = node.Left
 			} else {
@@ -407,9 +401,7 @@ func (t *TreeV4) FindTagsWithFilter(address *patricia.IPv4Address, filterFunc Fi
 		}
 
 		// there's still more address - keep traversing
-		// shift
-		address.Address <<= matchCount
-		address.Length -= matchCount
+		address.ShiftLeft(matchCount)
 		if address.Address < _leftmost32Bit {
 			nodeIndex = node.Left
 		} else {
@@ -466,9 +458,7 @@ func (t *TreeV4) FindTags(address *patricia.IPv4Address) ([]GeneratedType, error
 		}
 
 		// there's still more address - keep traversing
-		// shift
-		address.Address <<= matchCount
-		address.Length -= matchCount
+		address.ShiftLeft(matchCount)
 		if address.Address < _leftmost32Bit {
 			nodeIndex = node.Left
 		} else {
@@ -525,8 +515,7 @@ func (t *TreeV4) FindDeepestTag(address *patricia.IPv4Address) (bool, GeneratedT
 		}
 
 		// there's still more address - keep traversing
-		address.Address <<= matchCount
-		address.Length -= matchCount
+		address.ShiftLeft(matchCount)
 		if address.Address < _leftmost32Bit {
 			nodeIndex = node.Left
 		} else {

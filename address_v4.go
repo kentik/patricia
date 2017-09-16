@@ -26,3 +26,9 @@ func NewIPv4AddressFromBytes(address []byte, length uint) IPv4Address {
 		Length:  length,
 	}
 }
+
+// ShiftLeft shifts the address to the left
+func (i *IPv4Address) ShiftLeft(shiftCount uint) {
+	i.Address <<= shiftCount
+	i.Length -= shiftCount
+}
