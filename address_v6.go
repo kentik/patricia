@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 )
 
+const _leftmost64Bit = uint64(1 << 63)
+
 // IPv6Address is a representation of an IPv6 address and CIDR
 type IPv6Address struct {
 	Left   uint64
@@ -59,4 +61,9 @@ func ShiftRightIPv6(left uint64, right uint64, bitCount uint) (uint64, uint64) {
 	right = (right >> bitCount) | (left << (64 - bitCount))
 	left >>= bitCount
 	return left, right
+}
+
+// IsLeftBitSet returns whether the leftmost bit is set
+func (i *IPv6Address) IsLeftBitSet() bool {
+	return i.Left >= _leftmost64Bit
 }

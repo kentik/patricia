@@ -6,22 +6,20 @@ import (
 	"github.com/kentik/patricia"
 )
 
-const _leftmost32Bit = uint32(1 << 31)
-
 // MatchesFunc is called to check if tag data matches the input value
 type MatchesFunc func(payload GeneratedType, val GeneratedType) bool
 
 // FilterFunc is called on each result to see if it belongs in the resulting set
 type FilterFunc func(payload GeneratedType) bool
 
-// Tree is an IP Address patricia tree
+// TreeV4 is an IP Address patricia tree
 type TreeV4 struct {
 	nodes            []treeNodeV4 // root is always at [1] - [0] is unused
 	availableIndexes []uint       // a place to store node indexes that we deleted, and are available
 	tags             map[uint64]GeneratedType
 }
 
-// NewTree returns a new Tree
+// NewTreeV4 returns a new Tree
 func NewTreeV4(startingCapacity uint) *TreeV4 {
 	return &TreeV4{
 		nodes:            make([]treeNodeV4, 2, startingCapacity), // index 0 is skipped, 1 is root
@@ -125,7 +123,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 	// root node doesn't have any prefix, so find the starting point
 	nodeIndex := uint(0)
 	parent := root
-	if address.Address < _leftmost32Bit {
+	if !address.IsLeftBitSet() {
 		if root.Left == 0 {
 			newNodeIndex := t.newNode(address.Address, address.Length)
 			t.addTag(tag, newNodeIndex)
@@ -176,7 +174,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 			// shift
 			node.ShiftPrefix(matchCount)
 
-			if node.prefix < _leftmost32Bit {
+			if !node.IsLeftBitSet() {
 				newNode.Left = nodeIndex
 			} else {
 				newNode.Right = nodeIndex
@@ -200,7 +198,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 			// chop off what's matched so far
 			address.ShiftLeft(matchCount)
 
-			if address.Address < _leftmost32Bit {
+			if !address.IsLeftBitSet() {
 				if node.Left == 0 {
 					// nowhere else to go - create a new node here
 					newNodeIndex := t.newNode(address.Address, address.Length)
@@ -242,7 +240,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 
 		// see where the existing node fits - left or right
 		node.ShiftPrefix(matchCount)
-		if node.prefix < _leftmost32Bit {
+		if !node.IsLeftBitSet() {
 			newCommonParentNode.Left = nodeIndex
 			newCommonParentNode.Right = newNodeIndex
 		} else {
@@ -281,7 +279,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 
 		parentIndex = 1
 		parent = root
-		if address.Address < _leftmost32Bit {
+		if !address.IsLeftBitSet() {
 			nodeIndex = root.Left
 		} else {
 			nodeIndex = root.Right
@@ -311,7 +309,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 			parentIndex = nodeIndex
 			parent = node
 			address.ShiftLeft(matchCount)
-			if address.Address < _leftmost32Bit {
+			if !address.IsLeftBitSet() {
 				nodeIndex = node.Left
 			} else {
 				nodeIndex = node.Right
@@ -439,7 +437,7 @@ func (t *TreeV4) FindTagsWithFilter(address *patricia.IPv4Address, filterFunc Fi
 	}
 
 	var nodeIndex uint
-	if address.Address < _leftmost32Bit {
+	if !address.IsLeftBitSet() {
 		nodeIndex = root.Left
 	} else {
 		nodeIndex = root.Right
@@ -476,7 +474,7 @@ func (t *TreeV4) FindTagsWithFilter(address *patricia.IPv4Address, filterFunc Fi
 
 		// there's still more address - keep traversing
 		address.ShiftLeft(matchCount)
-		if address.Address < _leftmost32Bit {
+		if !address.IsLeftBitSet() {
 			nodeIndex = node.Left
 		} else {
 			nodeIndex = node.Right
@@ -500,7 +498,7 @@ func (t *TreeV4) FindTags(address *patricia.IPv4Address) ([]GeneratedType, error
 	}
 
 	var nodeIndex uint
-	if address.Address < _leftmost32Bit {
+	if !address.IsLeftBitSet() {
 		nodeIndex = root.Left
 	} else {
 		nodeIndex = root.Right
@@ -533,7 +531,7 @@ func (t *TreeV4) FindTags(address *patricia.IPv4Address) ([]GeneratedType, error
 
 		// there's still more address - keep traversing
 		address.ShiftLeft(matchCount)
-		if address.Address < _leftmost32Bit {
+		if !address.IsLeftBitSet() {
 			nodeIndex = node.Left
 		} else {
 			nodeIndex = node.Right
@@ -558,7 +556,7 @@ func (t *TreeV4) FindDeepestTag(address *patricia.IPv4Address) (bool, GeneratedT
 	}
 
 	var nodeIndex uint
-	if address.Address < _leftmost32Bit {
+	if !address.IsLeftBitSet() {
 		nodeIndex = root.Left
 	} else {
 		nodeIndex = root.Right
@@ -590,7 +588,7 @@ func (t *TreeV4) FindDeepestTag(address *patricia.IPv4Address) (bool, GeneratedT
 
 		// there's still more address - keep traversing
 		address.ShiftLeft(matchCount)
-		if address.Address < _leftmost32Bit {
+		if !address.IsLeftBitSet() {
 			nodeIndex = node.Left
 		} else {
 			nodeIndex = node.Right

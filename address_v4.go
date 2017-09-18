@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 )
 
+const _leftmost32Bit = uint32(1 << 31)
+
 // IPv4Address is a representation of an IPv4 address and CIDR
 type IPv4Address struct {
 	Address uint32
@@ -31,4 +33,9 @@ func NewIPv4AddressFromBytes(address []byte, length uint) IPv4Address {
 func (i *IPv4Address) ShiftLeft(shiftCount uint) {
 	i.Address <<= shiftCount
 	i.Length -= shiftCount
+}
+
+// IsLeftBitSet returns whether the leftmost bit is set
+func (i *IPv4Address) IsLeftBitSet() bool {
+	return i.Address >= _leftmost32Bit
 }

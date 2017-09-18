@@ -4,14 +4,12 @@ import (
 	"github.com/kentik/patricia"
 )
 
-const _leftmost64Bit = uint64(1 << 63)
-
-// Tree is an IP Address patricia tree
+// TreeV6 is an IP Address patricia tree
 type TreeV6 struct {
 	root *treeNodeV6
 }
 
-// NewTree returns a new Tree
+// NewTreeV6 returns a new Tree
 func NewTreeV6() *TreeV6 {
 	return &TreeV6{
 		root: &treeNodeV6{},
@@ -320,6 +318,7 @@ func (t *TreeV6) Delete(address *patricia.IPv6Address, matchFunc MatchesFunc, ma
 	return deleteCount, nil
 }
 
+// FindTags returns all tags matching the input address
 func (t *TreeV6) FindTags(address *patricia.IPv6Address) ([]GeneratedType, error) {
 	var matchCount uint
 	ret := make([]GeneratedType, 0)
@@ -375,6 +374,7 @@ func (t *TreeV6) FindTags(address *patricia.IPv6Address) ([]GeneratedType, error
 	}
 }
 
+// FindTagsWithFilter returns all tags for the input address that passes the filter function
 func (t *TreeV6) FindTagsWithFilter(address *patricia.IPv6Address, filterFunc FilterFunc) ([]GeneratedType, error) {
 	if filterFunc == nil {
 		return t.FindTags(address)
