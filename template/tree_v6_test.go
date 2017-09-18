@@ -28,7 +28,7 @@ func BenchmarkFindTagsV6(b *testing.B) {
 	tagC := "tagC"
 	tagZ := "tagD"
 
-	tree := NewTreeV6()
+	tree := NewTreeV6(2) // intentionally kept low to stress our resizing path
 
 	tree.Add(nil, tagZ) // default
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128), tagA)
@@ -43,7 +43,7 @@ func BenchmarkFindTagsV6(b *testing.B) {
 }
 
 func BenchmarkFindDeepestTagV6(b *testing.B) {
-	tree := NewTreeV6()
+	tree := NewTreeV6(2) // intentionally kept low to stress our resizing path
 	for i := 128; i > 0; i-- {
 		tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", i), fmt.Sprintf("Tag-%d", i))
 	}
@@ -55,7 +55,7 @@ func BenchmarkFindDeepestTagV6(b *testing.B) {
 }
 
 func TestSimpleTreeV6(t *testing.T) {
-	tree := NewTreeV6()
+	tree := NewTreeV6(2) // intentionally kept low to stress our resizing path
 
 	for i := 128; i > 0; i-- {
 		err := tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", i), fmt.Sprintf("Tag-%d", i))
@@ -132,7 +132,7 @@ func TestTree1V6(t *testing.T) {
 	tagC := "tagC"
 	tagZ := "tagD"
 
-	tree := NewTreeV6()
+	tree := NewTreeV6(2)                                          // intentionally kept low to stress our resizing path
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 0), tagZ) // default
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 100), tagA)
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 67), tagB)
@@ -175,7 +175,7 @@ func TestTree1V6WithFilter(t *testing.T) {
 		return val == "tagA" || val == "tagB"
 	}
 
-	tree := NewTreeV6()
+	tree := NewTreeV6(2)                                          // intentionally kept low to stress our resizing path
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 0), tagZ) // default
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 100), tagA)
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 67), tagB)
@@ -216,7 +216,7 @@ func TestRootNodeV6(t *testing.T) {
 	tagD := "tagD"
 	tagZ := "tagE"
 
-	tree := NewTreeV6()
+	tree := NewTreeV6(2) // intentionally kept low to stress our resizing path
 
 	// root node gets tags A & B
 	tree.Add(nil, tagA)
@@ -261,16 +261,16 @@ func TestDelete1V6(t *testing.T) {
 	tagC := "tagC"
 	tagZ := "tagZ"
 
-	tree := NewTreeV6()
-	assert.Equal(t, 1, countNodesV6(tree.root))
+	tree := NewTreeV6(2) // intentionally kept low to stress our resizing path
+	assert.Equal(t, 1, tree.countNodes(1))
 	tree.Add(nil, tagZ) // default
-	assert.Equal(t, 1, countNodesV6(tree.root))
+	assert.Equal(t, 1, tree.countNodes(1))
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/67", 67), tagA) // 1000000
-	assert.Equal(t, 2, countNodesV6(tree.root))
+	assert.Equal(t, 2, tree.countNodes(1))
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/2", 2), tagB) // 10
-	assert.Equal(t, 3, countNodesV6(tree.root))
+	assert.Equal(t, 3, tree.countNodes(1))
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128), tagC)
-	assert.Equal(t, 4, countNodesV6(tree.root))
+	assert.Equal(t, 4, tree.countNodes(1))
 
 	// three tags in a hierarchy - ask for an exact match, receive all 3 and the root
 	tags, err := tree.FindTags(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
@@ -282,8 +282,8 @@ func TestDelete1V6(t *testing.T) {
 	count, err = tree.Delete(ipv6FromString("F001:db8:0:0:0:0:2:1/128", 128), matchFunc, "bad tag")
 	assert.NoError(t, err)
 	assert.Equal(t, 0, count)
-	assert.Equal(t, 4, countNodesV6(tree.root))
-	assert.Equal(t, 4, countTagsV6(tree.root))
+	assert.Equal(t, uint(4), tree.countTags(1))
+	assert.Equal(t, 4, tree.countNodes(1))
 
 	// 2. delete a tag on an address that exists, but doesn't have the tag
 	count, err = tree.Delete(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 67), matchFunc, "bad tag")
@@ -294,15 +294,15 @@ func TestDelete1V6(t *testing.T) {
 	tags, err = tree.FindTags(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
 	assert.NoError(t, err)
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC, tagZ}))
-	assert.Equal(t, 4, countNodesV6(tree.root))
-	assert.Equal(t, 4, countTagsV6(tree.root))
+	assert.Equal(t, 4, tree.countNodes(1))
+	assert.Equal(t, uint(4), tree.countTags(1))
 
 	// 3. delete the default/root tag
 	count, err = tree.Delete(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 0), matchFunc, "tagZ")
 	assert.NoError(t, err)
 	assert.Equal(t, 1, count)
-	assert.Equal(t, 4, countNodesV6(tree.root)) // doesn't delete anything
-	assert.Equal(t, 3, countTagsV6(tree.root))
+	assert.Equal(t, 4, tree.countNodes(1)) // doesn't delete anything
+	assert.Equal(t, uint(3), tree.countTags(1))
 
 	// three tags in a hierarchy - ask for an exact match, receive all 3, not the root, which we deleted
 	tags, err = tree.FindTags(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
@@ -318,8 +318,8 @@ func TestDelete1V6(t *testing.T) {
 	tags, err = tree.FindTags(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
 	assert.NoError(t, err)
 	assert.True(t, tagArraysEqual(tags, []string{tagB, tagC}))
-	assert.Equal(t, 3, countNodesV6(tree.root))
-	assert.Equal(t, 2, countTagsV6(tree.root))
+	assert.Equal(t, 3, tree.countNodes(1))
+	assert.Equal(t, uint(2), tree.countTags(1))
 
 	// 5. delete tag B
 	count, err = tree.Delete(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 2), matchFunc, "tagB")
@@ -330,8 +330,8 @@ func TestDelete1V6(t *testing.T) {
 	tags, err = tree.FindTags(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
 	assert.NoError(t, err)
 	assert.True(t, tagArraysEqual(tags, []string{tagC}))
-	assert.Equal(t, 2, countNodesV6(tree.root))
-	assert.Equal(t, 1, countTagsV6(tree.root))
+	assert.Equal(t, 2, tree.countNodes(1))
+	assert.Equal(t, uint(1), tree.countTags(1))
 
 	// 6. delete tag C
 	count, err = tree.Delete(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128), matchFunc, "tagC")
@@ -342,6 +342,6 @@ func TestDelete1V6(t *testing.T) {
 	tags, err = tree.FindTags(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
 	assert.NoError(t, err)
 	assert.True(t, tagArraysEqual(tags, []string{}))
-	assert.Equal(t, 1, countNodesV6(tree.root))
-	assert.Equal(t, 0, countTagsV6(tree.root))
+	assert.Equal(t, 1, tree.countNodes(1))
+	assert.Equal(t, uint(0), tree.countTags(1))
 }

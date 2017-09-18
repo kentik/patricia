@@ -6,12 +6,6 @@ import (
 	"github.com/kentik/patricia"
 )
 
-// MatchesFunc is called to check if tag data matches the input value
-type MatchesFunc func(payload GeneratedType, val GeneratedType) bool
-
-// FilterFunc is called on each result to see if it belongs in the resulting set
-type FilterFunc func(payload GeneratedType) bool
-
 // TreeV4 is an IP Address patricia tree
 type TreeV4 struct {
 	nodes            []treeNodeV4 // root is always at [1] - [0] is unused
@@ -87,20 +81,6 @@ func (t *TreeV4) deleteTag(nodeIndex uint, matchTag GeneratedType, matchFunc Mat
 		}
 	}
 	return deleteCount, keepCount
-}
-
-// create a new node in the tree, return its index
-func (t *TreeV4) newNode(address *patricia.IPv4Address, prefixLength uint) uint {
-	availCount := len(t.availableIndexes)
-	if availCount > 0 {
-		index := t.availableIndexes[availCount-1]
-		t.availableIndexes = t.availableIndexes[:availCount-1]
-		t.nodes[index] = treeNodeV4{prefix: address.Address, prefixLength: prefixLength}
-		return index
-	}
-
-	t.nodes = append(t.nodes, treeNodeV4{prefix: address.Address, prefixLength: prefixLength})
-	return uint(len(t.nodes) - 1)
 }
 
 // Add adds a node to the tree
@@ -620,10 +600,4 @@ func (t *TreeV4) countTags(nodeIndex uint) uint {
 		tagCount += t.countTags(node.Right)
 	}
 	return tagCount
-}
-
-func (t *TreeV4) print() {
-	for i := range t.nodes {
-		fmt.Printf("%d: \tleft: %d, right: %d, prefix: %#032b (%d), tags: (%d): %s\n", i, int(t.nodes[i].Left), int(t.nodes[i].Right), int(t.nodes[i].prefix), int(t.nodes[i].prefixLength), t.nodes[i].TagCount, t.tagsForNode(uint(i)))
-	}
 }
