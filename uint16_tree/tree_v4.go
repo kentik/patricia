@@ -341,13 +341,18 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 		// target has two children
 		if parent.Left == 0 || parent.Right == 0 {
 			// parent has just the target node - move target node's children up
-			parent.Left = targetNode.Left
-			parent.Right = targetNode.Right
-
-			// need to update the parent prefix to include target node's
-			parent.prefix, parent.prefixLength = patricia.MergePrefixes32(parent.prefix, parent.prefixLength, targetNode.prefix, targetNode.prefixLength)
+			if parentIndex > 1 {
+				// parent isn't root - update its prefix
+				parent.Left = targetNode.Left
+				parent.Right = targetNode.Right
+				parent.prefix, parent.prefixLength = patricia.MergePrefixes32(parent.prefix, parent.prefixLength, targetNode.prefix, targetNode.prefixLength)
+			} else {
+				// not deleting the node
+				return deleteCount, nil
+			}
 		} else {
 			// parent has another sibling of target - can't do anything
+			return deleteCount, nil
 		}
 	} else if targetNode.Left != 0 {
 		// target node only has only left child
