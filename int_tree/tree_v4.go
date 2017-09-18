@@ -6,22 +6,14 @@ import (
 	"github.com/kentik/patricia"
 )
 
-const _leftmost32Bit = uint32(1 << 31)
-
-// MatchesFunc is called to check if tag data matches the input value
-type MatchesFunc func(payload int, val int) bool
-
-// FilterFunc is called on each result to see if it belongs in the resulting set
-type FilterFunc func(payload int) bool
-
-// Tree is an IP Address patricia tree
+// TreeV4 is an IP Address patricia tree
 type TreeV4 struct {
 	nodes            []treeNodeV4 // root is always at [1] - [0] is unused
 	availableIndexes []uint       // a place to store node indexes that we deleted, and are available
 	tags             map[uint64]int
 }
 
-// NewTree returns a new Tree
+// NewTreeV4 returns a new Tree
 func NewTreeV4(startingCapacity uint) *TreeV4 {
 	return &TreeV4{
 		nodes:            make([]treeNodeV4, 2, startingCapacity), // index 0 is skipped, 1 is root
@@ -91,20 +83,6 @@ func (t *TreeV4) deleteTag(nodeIndex uint, matchTag int, matchFunc MatchesFunc) 
 	return deleteCount, keepCount
 }
 
-// create a new node in the tree, return its index
-func (t *TreeV4) newNode(prefix uint32, prefixLength uint) uint {
-	availCount := len(t.availableIndexes)
-	if availCount > 0 {
-		index := t.availableIndexes[availCount-1]
-		t.availableIndexes = t.availableIndexes[:availCount-1]
-		t.nodes[index] = treeNodeV4{prefix: prefix, prefixLength: prefixLength}
-		return index
-	}
-
-	t.nodes = append(t.nodes, treeNodeV4{prefix: prefix, prefixLength: prefixLength})
-	return uint(len(t.nodes) - 1)
-}
-
 // Add adds a node to the tree
 func (t *TreeV4) Add(address *patricia.IPv4Address, tag int) error {
 	// make sure we have more than enough capacity before we start adding to the tree, which invalidates pointers into the array
@@ -125,9 +103,9 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag int) error {
 	// root node doesn't have any prefix, so find the starting point
 	nodeIndex := uint(0)
 	parent := root
-	if address.Address < _leftmost32Bit {
+	if !address.IsLeftBitSet() {
 		if root.Left == 0 {
-			newNodeIndex := t.newNode(address.Address, address.Length)
+			newNodeIndex := t.newNode(address, address.Length)
 			t.addTag(tag, newNodeIndex)
 			root.Left = newNodeIndex
 			return nil
@@ -135,7 +113,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag int) error {
 		nodeIndex = root.Left
 	} else {
 		if root.Right == 0 {
-			newNodeIndex := t.newNode(address.Address, address.Length)
+			newNodeIndex := t.newNode(address, address.Length)
 			t.addTag(tag, newNodeIndex)
 			root.Right = newNodeIndex
 			return nil
@@ -167,7 +145,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag int) error {
 			}
 
 			// the input address is shorter than the match found - need to create a new, intermediate parent
-			newNodeIndex := t.newNode(address.Address, address.Length)
+			newNodeIndex := t.newNode(address, address.Length)
 			newNode := &t.nodes[newNodeIndex]
 			t.addTag(tag, newNodeIndex)
 
@@ -176,7 +154,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag int) error {
 			// shift
 			node.ShiftPrefix(matchCount)
 
-			if node.prefix < _leftmost32Bit {
+			if !node.IsLeftBitSet() {
 				newNode.Left = nodeIndex
 			} else {
 				newNode.Right = nodeIndex
@@ -200,10 +178,10 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag int) error {
 			// chop off what's matched so far
 			address.ShiftLeft(matchCount)
 
-			if address.Address < _leftmost32Bit {
+			if !address.IsLeftBitSet() {
 				if node.Left == 0 {
 					// nowhere else to go - create a new node here
-					newNodeIndex := t.newNode(address.Address, address.Length)
+					newNodeIndex := t.newNode(address, address.Length)
 					t.addTag(tag, newNodeIndex)
 					node.Left = newNodeIndex
 					return nil
@@ -218,7 +196,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag int) error {
 			// node didn't belong on the left, so it belongs on the right
 			if node.Right == 0 {
 				// nowhere else to go - create a new node here
-				newNodeIndex := t.newNode(address.Address, address.Length)
+				newNodeIndex := t.newNode(address, address.Length)
 				t.addTag(tag, newNodeIndex)
 				node.Right = newNodeIndex
 				return nil
@@ -231,18 +209,18 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag int) error {
 		}
 
 		// partial match with this node - need to split this node
-		newCommonParentNodeIndex := t.newNode(address.Address, matchCount)
+		newCommonParentNodeIndex := t.newNode(address, matchCount)
 		newCommonParentNode := &t.nodes[newCommonParentNodeIndex]
 
 		// shift
 		address.ShiftLeft(matchCount)
 
-		newNodeIndex := t.newNode(address.Address, address.Length)
+		newNodeIndex := t.newNode(address, address.Length)
 		t.addTag(tag, newNodeIndex)
 
 		// see where the existing node fits - left or right
 		node.ShiftPrefix(matchCount)
-		if node.prefix < _leftmost32Bit {
+		if !node.IsLeftBitSet() {
 			newCommonParentNode.Left = nodeIndex
 			newCommonParentNode.Right = newNodeIndex
 		} else {
@@ -281,7 +259,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 
 		parentIndex = 1
 		parent = root
-		if address.Address < _leftmost32Bit {
+		if !address.IsLeftBitSet() {
 			nodeIndex = root.Left
 		} else {
 			nodeIndex = root.Right
@@ -311,7 +289,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 			parentIndex = nodeIndex
 			parent = node
 			address.ShiftLeft(matchCount)
-			if address.Address < _leftmost32Bit {
+			if !address.IsLeftBitSet() {
 				nodeIndex = node.Left
 			} else {
 				nodeIndex = node.Right
@@ -345,7 +323,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 				// parent isn't root - update its prefix
 				parent.Left = targetNode.Left
 				parent.Right = targetNode.Right
-				parent.prefix, parent.prefixLength = patricia.MergePrefixes32(parent.prefix, parent.prefixLength, targetNode.prefix, targetNode.prefixLength)
+				parent.MergeFromNodes(parent, targetNode)
 			} else {
 				// not deleting the node
 				return deleteCount, nil
@@ -364,7 +342,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 
 		// need to update the child node prefix to include target node's
 		tmpNode := &t.nodes[targetNode.Left]
-		tmpNode.prefix, tmpNode.prefixLength = patricia.MergePrefixes32(targetNode.prefix, targetNode.prefixLength, tmpNode.prefix, tmpNode.prefixLength)
+		tmpNode.MergeFromNodes(targetNode, tmpNode)
 	} else if targetNode.Right != 0 {
 		// target node has only right child
 		if parent.Left == targetNodeIndex {
@@ -375,15 +353,15 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 
 		// need to update the child node prefix to include target node's
 		tmpNode := &t.nodes[targetNode.Right]
-		tmpNode.prefix, tmpNode.prefixLength = patricia.MergePrefixes32(targetNode.prefix, targetNode.prefixLength, tmpNode.prefix, tmpNode.prefixLength)
+		tmpNode.MergeFromNodes(targetNode, tmpNode)
 	} else {
 		// target node has no children - straight-up remove this node
 		if parent.Left == targetNodeIndex {
 			parent.Left = 0
 			if parentIndex > 1 && parent.TagCount == 0 && parent.Right != 0 {
 				// parent isn't root, has no tags, and there's a sibling - merge sibling into parent
-				tmpNode := t.nodes[parent.Right]
-				parent.prefix, parent.prefixLength = patricia.MergePrefixes32(parent.prefix, parent.prefixLength, tmpNode.prefix, tmpNode.prefixLength)
+				tmpNode := &t.nodes[parent.Right]
+				parent.MergeFromNodes(parent, tmpNode)
 
 				// move tags
 				t.moveTags(parent.Right, parentIndex)
@@ -397,7 +375,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 			if parentIndex > 1 && parent.TagCount == 0 && parent.Left != 0 {
 				// parent isn't root, has no tags, and there's a sibling - merge sibling into parent
 				tmpNode := &t.nodes[parent.Left]
-				parent.prefix, parent.prefixLength = patricia.MergePrefixes32(parent.prefix, parent.prefixLength, tmpNode.prefix, tmpNode.prefixLength)
+				parent.MergeFromNodes(parent, tmpNode)
 
 				// move tags
 				t.moveTags(parent.Left, parentIndex)
@@ -439,7 +417,7 @@ func (t *TreeV4) FindTagsWithFilter(address *patricia.IPv4Address, filterFunc Fi
 	}
 
 	var nodeIndex uint
-	if address.Address < _leftmost32Bit {
+	if !address.IsLeftBitSet() {
 		nodeIndex = root.Left
 	} else {
 		nodeIndex = root.Right
@@ -476,7 +454,7 @@ func (t *TreeV4) FindTagsWithFilter(address *patricia.IPv4Address, filterFunc Fi
 
 		// there's still more address - keep traversing
 		address.ShiftLeft(matchCount)
-		if address.Address < _leftmost32Bit {
+		if !address.IsLeftBitSet() {
 			nodeIndex = node.Left
 		} else {
 			nodeIndex = node.Right
@@ -500,7 +478,7 @@ func (t *TreeV4) FindTags(address *patricia.IPv4Address) ([]int, error) {
 	}
 
 	var nodeIndex uint
-	if address.Address < _leftmost32Bit {
+	if !address.IsLeftBitSet() {
 		nodeIndex = root.Left
 	} else {
 		nodeIndex = root.Right
@@ -533,7 +511,7 @@ func (t *TreeV4) FindTags(address *patricia.IPv4Address) ([]int, error) {
 
 		// there's still more address - keep traversing
 		address.ShiftLeft(matchCount)
-		if address.Address < _leftmost32Bit {
+		if !address.IsLeftBitSet() {
 			nodeIndex = node.Left
 		} else {
 			nodeIndex = node.Right
@@ -558,7 +536,7 @@ func (t *TreeV4) FindDeepestTag(address *patricia.IPv4Address) (bool, int, error
 	}
 
 	var nodeIndex uint
-	if address.Address < _leftmost32Bit {
+	if !address.IsLeftBitSet() {
 		nodeIndex = root.Left
 	} else {
 		nodeIndex = root.Right
@@ -590,7 +568,7 @@ func (t *TreeV4) FindDeepestTag(address *patricia.IPv4Address) (bool, int, error
 
 		// there's still more address - keep traversing
 		address.ShiftLeft(matchCount)
-		if address.Address < _leftmost32Bit {
+		if !address.IsLeftBitSet() {
 			nodeIndex = node.Left
 		} else {
 			nodeIndex = node.Right
@@ -622,10 +600,4 @@ func (t *TreeV4) countTags(nodeIndex uint) uint {
 		tagCount += t.countTags(node.Right)
 	}
 	return tagCount
-}
-
-func (t *TreeV4) print() {
-	for i := range t.nodes {
-		fmt.Printf("%d: \tleft: %d, right: %d, prefix: %#032b (%d), tags: (%d): %s\n", i, int(t.nodes[i].Left), int(t.nodes[i].Right), int(t.nodes[i].prefix), int(t.nodes[i].prefixLength), t.nodes[i].TagCount, t.tagsForNode(uint(i)))
-	}
 }

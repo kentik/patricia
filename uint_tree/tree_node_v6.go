@@ -4,13 +4,16 @@ import (
 	"github.com/kentik/patricia"
 )
 
+const _leftmost64Bit = uint64(1 << 63)
+
 type treeNodeV6 struct {
 	treeNode
-	Left         *treeNodeV6 // left node
-	Right        *treeNodeV6 // right node
+	Left         uint // left node index: -1 for not set
+	Right        uint // right node index: -1 for not set
 	prefixLeft   uint64
 	prefixRight  uint64
 	prefixLength uint
+	TagCount     uint
 }
 
 func (n *treeNodeV6) MatchCount(address *patricia.IPv6Address) uint {
@@ -32,4 +35,14 @@ func (n *treeNodeV6) MatchCount(address *patricia.IPv6Address) uint {
 // ShiftPrefix shifts the prefix by the input shiftCount
 func (n *treeNodeV6) ShiftPrefix(shiftCount uint) {
 	n.prefixLeft, n.prefixRight, n.prefixLength = patricia.ShiftLeftIPv6(n.prefixLeft, n.prefixRight, n.prefixLength, shiftCount)
+}
+
+// IsLeftBitSet returns whether the leftmost bit is set
+func (n *treeNodeV6) IsLeftBitSet() bool {
+	return n.prefixLeft >= _leftmost64Bit
+}
+
+// MergeFromNodes updates the prefix and prefix length from the two input nodes
+func (n *treeNodeV6) MergeFromNodes(left *treeNodeV6, right *treeNodeV6) {
+	n.prefixLeft, n.prefixRight, n.prefixLength = patricia.MergePrefixes64(left.prefixLeft, left.prefixRight, left.prefixLength, right.prefixLeft, right.prefixRight, right.prefixLength)
 }
