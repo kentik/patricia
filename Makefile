@@ -5,9 +5,15 @@ GENERATED_TYPES := bool string int int8 int16 int32 int64 uint uint8 uint16 uint
 .PHONY: all
 all: codegen code
 
+ipv6code:
+	cp template/tree_v4.go template/tree_v6_generated.go
+	sed -i -e 's/TreeV4/TreeV6/g' template/tree_v6_generated.go
+	sed -i -e 's/treeNodeV4/treeNodeV6/g' template/tree_v6_generated.go
+	sed -i -e 's/IPv4Address/IPv6Address/g' template/tree_v6_generated.go
+
 codegen: $(addprefix codegen-,$(GENERATED_TYPES))
 
-codegen-%:
+codegen-%: ipv6code
 	@echo "** generating $* tree"
 	mkdir -p "./${*}_tree"
 	cp -pa template/*.go "./${*}_tree"
@@ -19,6 +25,7 @@ codegen-%:
 .PHONY: clean
 clean:
 	rm -rf *_tree
+	rm -f template/tree_v6_generated.go
 
 .PHONY: code
 code:
