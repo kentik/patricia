@@ -11,9 +11,9 @@ ipv6code:
 	sed -i -e 's/treeNodeV4/treeNodeV6/g' template/tree_v6_generated.go
 	sed -i -e 's/IPv4Address/IPv6Address/g' template/tree_v6_generated.go
 
-codegen: $(addprefix codegen-,$(GENERATED_TYPES))
+codegen: ipv6code $(addprefix codegen-,$(GENERATED_TYPES))
 
-codegen-%: ipv6code
+codegen-%:
 	@echo "** generating $* tree"
 	mkdir -p "./${*}_tree"
 	cp -pa template/*.go "./${*}_tree"
