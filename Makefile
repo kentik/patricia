@@ -6,12 +6,6 @@ GENERATED_TYPES := bool string int int8 int16 int32 int64 uint uint8 uint16 uint
 all: codegen code
 
 codegen: $(addprefix codegen-,$(GENERATED_TYPES))
-	mkdir -p interface_array_tree
-	cp -pa template/*.go ./interface_array_tree
-	rm -f ./interface_array_tree/*_test.go
-	rm -f ./interface_array_tree/types.go
-	( cd interface_array_tree && sed -i "s/GeneratedType/[]interface{}/g" *.go )
-	( cd interface_array_tree && sed -i 's/package template/package interface_array_tree/g' *.go )
 
 codegen-%:
 	@echo "** generating $* tree"

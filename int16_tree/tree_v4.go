@@ -1,6 +1,8 @@
 package int16_tree
 
 import (
+	"fmt"
+
 	"github.com/kentik/patricia"
 )
 
@@ -45,13 +47,25 @@ func (t *TreeV4) tagsForNode(nodeIndex uint) []int16 {
 	return ret
 }
 
+func (t *TreeV4) moveTags(fromIndex uint, toIndex uint) {
+	tagCount := t.nodes[fromIndex].TagCount
+	fromKey := uint64(fromIndex) << 32
+	toKey := uint64(toIndex) << 32
+	for i := uint(0); i < tagCount; i++ {
+		t.tags[toKey+uint64(i)] = t.tags[fromKey+uint64(i)]
+		delete(t.tags, fromKey+uint64(i))
+	}
+	t.nodes[toIndex].TagCount += t.nodes[fromIndex].TagCount
+	t.nodes[fromIndex].TagCount = 0
+}
+
 func (t *TreeV4) firstTagForNode(nodeIndex uint) int16 {
 	return t.tags[(uint64(nodeIndex) << 32)]
 }
 
 // delete tags at the input node, returning how many were deleted, and how many are left
 func (t *TreeV4) deleteTag(nodeIndex uint, matchTag int16, matchFunc MatchesFunc) (int, int) {
-	// WBCTODO: write this properly - this is a hacky get-this-done implementation
+	// TODO: this could be done much more efficiently
 
 	// get tags
 	tags := t.tagsForNode(nodeIndex)
@@ -130,8 +144,19 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag int16) error {
 	}
 
 	for {
+		if nodeIndex == 0 {
+			panic("Trying to traverse nodeIndex=0")
+		}
 		node := &t.nodes[nodeIndex]
+		if node.prefixLength == 0 {
+			panic("Reached a node with no prefix")
+		}
+
 		matchCount := uint(node.MatchCount(address))
+		if matchCount == 0 {
+			panic(fmt.Sprintf("Should not have traversed to a node with no prefix match - node prefix length: %d; address prefix length: %d", node.prefixLength, address.Length))
+		}
+
 		if matchCount == address.Length {
 			// all the bits in the address matched
 
@@ -167,10 +192,6 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag int16) error {
 				parent.Right = newNodeIndex
 			}
 			return nil
-		}
-
-		if matchCount == 0 {
-			panic("Should not have traversed to a node with no prefix match")
 		}
 
 		if matchCount == node.prefixLength {
@@ -246,6 +267,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag int16) error {
 func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, matchVal int16) (int, error) {
 	// traverse the tree, finding the node and its parent
 	root := &t.nodes[1]
+	var parentIndex uint
 	var parent *treeNodeV4
 	var targetNode *treeNodeV4
 	var targetNodeIndex uint
@@ -257,6 +279,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 	} else {
 		nodeIndex := uint(0)
 
+		parentIndex = 1
 		parent = root
 		if address.Address < _leftmost32Bit {
 			nodeIndex = root.Left
@@ -285,6 +308,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 			}
 
 			// there's still more address - keep traversing
+			parentIndex = nodeIndex
 			parent = node
 			address.ShiftLeft(matchCount)
 			if address.Address < _leftmost32Bit {
@@ -300,7 +324,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 		return 0, nil
 	}
 
-	// we have tags to delete - build up a new list with the exact size needed
+	// delete matching tags
 	deleteCount, remainingTagCount := t.deleteTag(targetNodeIndex, matchVal, matchFunc)
 	if remainingTagCount > 0 {
 		// target node still has tags - we're not deleting it
@@ -312,19 +336,21 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 		return deleteCount, nil
 	}
 
-	// see if we can just move the children up
+	// compact the tree, if possible
 	if targetNode.Left != 0 && targetNode.Right != 0 {
+		// target has two children
 		if parent.Left == 0 || parent.Right == 0 {
-			// target node has two children, parent has just the target node - move target node's children up
+			// parent has just the target node - move target node's children up
 			parent.Left = targetNode.Left
 			parent.Right = targetNode.Right
 
 			// need to update the parent prefix to include target node's
 			parent.prefix, parent.prefixLength = patricia.MergePrefixes32(parent.prefix, parent.prefixLength, targetNode.prefix, targetNode.prefixLength)
+		} else {
+			// parent has another sibling of target - can't do anything
 		}
 	} else if targetNode.Left != 0 {
 		// target node only has only left child
-		// move target's left node up
 		if parent.Left == targetNodeIndex {
 			parent.Left = targetNode.Left
 		} else {
@@ -336,8 +362,6 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 		tmpNode.prefix, tmpNode.prefixLength = patricia.MergePrefixes32(targetNode.prefix, targetNode.prefixLength, tmpNode.prefix, tmpNode.prefixLength)
 	} else if targetNode.Right != 0 {
 		// target node has only right child
-
-		// only has right child - see where it goes
 		if parent.Left == targetNodeIndex {
 			parent.Left = targetNode.Right
 		} else {
@@ -348,14 +372,40 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 		tmpNode := &t.nodes[targetNode.Right]
 		tmpNode.prefix, tmpNode.prefixLength = patricia.MergePrefixes32(targetNode.prefix, targetNode.prefixLength, tmpNode.prefix, tmpNode.prefixLength)
 	} else {
-		// target node has no children
+		// target node has no children - straight-up remove this node
 		if parent.Left == targetNodeIndex {
 			parent.Left = 0
+			if parentIndex > 1 && parent.TagCount == 0 && parent.Right != 0 {
+				// parent isn't root, has no tags, and there's a sibling - merge sibling into parent
+				tmpNode := t.nodes[parent.Right]
+				parent.prefix, parent.prefixLength = patricia.MergePrefixes32(parent.prefix, parent.prefixLength, tmpNode.prefix, tmpNode.prefixLength)
+
+				// move tags
+				t.moveTags(parent.Right, parentIndex)
+
+				// parent now gets target's sibling's children
+				parent.Left = t.nodes[parent.Right].Left
+				parent.Right = t.nodes[parent.Right].Right
+			}
 		} else {
 			parent.Right = 0
+			if parentIndex > 1 && parent.TagCount == 0 && parent.Left != 0 {
+				// parent isn't root, has no tags, and there's a sibling - merge sibling into parent
+				tmpNode := &t.nodes[parent.Left]
+				parent.prefix, parent.prefixLength = patricia.MergePrefixes32(parent.prefix, parent.prefixLength, tmpNode.prefix, tmpNode.prefixLength)
+
+				// move tags
+				t.moveTags(parent.Left, parentIndex)
+
+				// parent now gets target's sibling's children
+				parent.Right = t.nodes[parent.Left].Right
+				parent.Left = t.nodes[parent.Left].Left
+			}
 		}
 	}
 
+	targetNode.Left = 0
+	targetNode.Right = 0
 	t.availableIndexes = append(t.availableIndexes, targetNodeIndex)
 	return deleteCount, nil
 }
@@ -567,4 +617,10 @@ func (t *TreeV4) countTags(nodeIndex uint) uint {
 		tagCount += t.countTags(node.Right)
 	}
 	return tagCount
+}
+
+func (t *TreeV4) print() {
+	for i := range t.nodes {
+		fmt.Printf("%d: \tleft: %d, right: %d, prefix: %#032b (%d), tags: (%d): %s\n", i, int(t.nodes[i].Left), int(t.nodes[i].Right), int(t.nodes[i].prefix), int(t.nodes[i].prefixLength), t.nodes[i].TagCount, t.tagsForNode(uint(i)))
+	}
 }
