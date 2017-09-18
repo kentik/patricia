@@ -3,6 +3,7 @@ package template
 import (
 	"encoding/binary"
 	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/kentik/patricia"
@@ -423,6 +424,19 @@ func TestDelete1(t *testing.T) {
 	assert.True(t, tagArraysEqual(tags, []string{}))
 	assert.Equal(t, 2, tree.countNodes(1))
 	assert.Equal(t, uint(2), tree.countTags(1))
+}
+
+func TestTryToBreak(t *testing.T) {
+	tree := NewTreeV4(1000000)
+	for a := byte(1); a < 10; a++ {
+		for b := byte(1); b < 10; b++ {
+			for c := byte(1); c < 10; c++ {
+				for d := byte(1); d < 10; d++ {
+					tree.Add(ipv4FromBytes([]byte{a, b, c, d}, rand.Intn(32)), "tag")
+				}
+			}
+		}
+	}
 }
 
 func TestTagsMap(t *testing.T) {
