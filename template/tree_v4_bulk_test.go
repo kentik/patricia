@@ -83,7 +83,7 @@ func TestBulkLoad(t *testing.T) {
 			v4 := *v4Original
 			foundTags, err := tree.FindTags(&v4)
 			assert.NoError(t, err)
-			if assert.True(t, len(foundTags) > 0) {
+			if assert.True(t, len(foundTags) > 0, "Couldn't find tags for "+address) {
 				assert.True(t, tag == foundTags[len(foundTags)-1])
 			}
 
