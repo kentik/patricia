@@ -40,3 +40,8 @@ func (n *treeNodeV4) ShiftPrefix(shiftCount uint) {
 func (n *treeNodeV4) IsLeftBitSet() bool {
 	return n.prefix >= _leftmost32Bit
 }
+
+// MergeFromNodes updates the prefix and prefix length from the two input nodes
+func (n *treeNodeV4) MergeFromNodes(left *treeNodeV4, right *treeNodeV4) {
+	n.prefix, n.prefixLength = patricia.MergePrefixes32(left.prefix, left.prefixLength, right.prefix, right.prefixLength)
+}

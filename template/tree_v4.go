@@ -90,16 +90,16 @@ func (t *TreeV4) deleteTag(nodeIndex uint, matchTag GeneratedType, matchFunc Mat
 }
 
 // create a new node in the tree, return its index
-func (t *TreeV4) newNode(prefix uint32, prefixLength uint) uint {
+func (t *TreeV4) newNode(address *patricia.IPv4Address, prefixLength uint) uint {
 	availCount := len(t.availableIndexes)
 	if availCount > 0 {
 		index := t.availableIndexes[availCount-1]
 		t.availableIndexes = t.availableIndexes[:availCount-1]
-		t.nodes[index] = treeNodeV4{prefix: prefix, prefixLength: prefixLength}
+		t.nodes[index] = treeNodeV4{prefix: address.Address, prefixLength: prefixLength}
 		return index
 	}
 
-	t.nodes = append(t.nodes, treeNodeV4{prefix: prefix, prefixLength: prefixLength})
+	t.nodes = append(t.nodes, treeNodeV4{prefix: address.Address, prefixLength: prefixLength})
 	return uint(len(t.nodes) - 1)
 }
 
@@ -125,7 +125,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 	parent := root
 	if !address.IsLeftBitSet() {
 		if root.Left == 0 {
-			newNodeIndex := t.newNode(address.Address, address.Length)
+			newNodeIndex := t.newNode(address, address.Length)
 			t.addTag(tag, newNodeIndex)
 			root.Left = newNodeIndex
 			return nil
@@ -133,7 +133,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 		nodeIndex = root.Left
 	} else {
 		if root.Right == 0 {
-			newNodeIndex := t.newNode(address.Address, address.Length)
+			newNodeIndex := t.newNode(address, address.Length)
 			t.addTag(tag, newNodeIndex)
 			root.Right = newNodeIndex
 			return nil
@@ -165,7 +165,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 			}
 
 			// the input address is shorter than the match found - need to create a new, intermediate parent
-			newNodeIndex := t.newNode(address.Address, address.Length)
+			newNodeIndex := t.newNode(address, address.Length)
 			newNode := &t.nodes[newNodeIndex]
 			t.addTag(tag, newNodeIndex)
 
@@ -201,7 +201,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 			if !address.IsLeftBitSet() {
 				if node.Left == 0 {
 					// nowhere else to go - create a new node here
-					newNodeIndex := t.newNode(address.Address, address.Length)
+					newNodeIndex := t.newNode(address, address.Length)
 					t.addTag(tag, newNodeIndex)
 					node.Left = newNodeIndex
 					return nil
@@ -216,7 +216,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 			// node didn't belong on the left, so it belongs on the right
 			if node.Right == 0 {
 				// nowhere else to go - create a new node here
-				newNodeIndex := t.newNode(address.Address, address.Length)
+				newNodeIndex := t.newNode(address, address.Length)
 				t.addTag(tag, newNodeIndex)
 				node.Right = newNodeIndex
 				return nil
@@ -229,13 +229,13 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag GeneratedType) error {
 		}
 
 		// partial match with this node - need to split this node
-		newCommonParentNodeIndex := t.newNode(address.Address, matchCount)
+		newCommonParentNodeIndex := t.newNode(address, matchCount)
 		newCommonParentNode := &t.nodes[newCommonParentNodeIndex]
 
 		// shift
 		address.ShiftLeft(matchCount)
 
-		newNodeIndex := t.newNode(address.Address, address.Length)
+		newNodeIndex := t.newNode(address, address.Length)
 		t.addTag(tag, newNodeIndex)
 
 		// see where the existing node fits - left or right
@@ -343,7 +343,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 				// parent isn't root - update its prefix
 				parent.Left = targetNode.Left
 				parent.Right = targetNode.Right
-				parent.prefix, parent.prefixLength = patricia.MergePrefixes32(parent.prefix, parent.prefixLength, targetNode.prefix, targetNode.prefixLength)
+				parent.MergeFromNodes(parent, targetNode)
 			} else {
 				// not deleting the node
 				return deleteCount, nil
@@ -362,7 +362,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 
 		// need to update the child node prefix to include target node's
 		tmpNode := &t.nodes[targetNode.Left]
-		tmpNode.prefix, tmpNode.prefixLength = patricia.MergePrefixes32(targetNode.prefix, targetNode.prefixLength, tmpNode.prefix, tmpNode.prefixLength)
+		tmpNode.MergeFromNodes(targetNode, tmpNode)
 	} else if targetNode.Right != 0 {
 		// target node has only right child
 		if parent.Left == targetNodeIndex {
@@ -373,15 +373,15 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 
 		// need to update the child node prefix to include target node's
 		tmpNode := &t.nodes[targetNode.Right]
-		tmpNode.prefix, tmpNode.prefixLength = patricia.MergePrefixes32(targetNode.prefix, targetNode.prefixLength, tmpNode.prefix, tmpNode.prefixLength)
+		tmpNode.MergeFromNodes(targetNode, tmpNode)
 	} else {
 		// target node has no children - straight-up remove this node
 		if parent.Left == targetNodeIndex {
 			parent.Left = 0
 			if parentIndex > 1 && parent.TagCount == 0 && parent.Right != 0 {
 				// parent isn't root, has no tags, and there's a sibling - merge sibling into parent
-				tmpNode := t.nodes[parent.Right]
-				parent.prefix, parent.prefixLength = patricia.MergePrefixes32(parent.prefix, parent.prefixLength, tmpNode.prefix, tmpNode.prefixLength)
+				tmpNode := &t.nodes[parent.Right]
+				parent.MergeFromNodes(parent, tmpNode)
 
 				// move tags
 				t.moveTags(parent.Right, parentIndex)
@@ -395,7 +395,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 			if parentIndex > 1 && parent.TagCount == 0 && parent.Left != 0 {
 				// parent isn't root, has no tags, and there's a sibling - merge sibling into parent
 				tmpNode := &t.nodes[parent.Left]
-				parent.prefix, parent.prefixLength = patricia.MergePrefixes32(parent.prefix, parent.prefixLength, tmpNode.prefix, tmpNode.prefixLength)
+				parent.MergeFromNodes(parent, tmpNode)
 
 				// move tags
 				t.moveTags(parent.Left, parentIndex)
