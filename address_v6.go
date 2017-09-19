@@ -64,6 +64,6 @@ func ShiftRightIPv6(left uint64, right uint64, bitCount uint) (uint64, uint64) {
 }
 
 // IsLeftBitSet returns whether the leftmost bit is set
-func (i *IPv6Address) IsLeftBitSet() bool {
-	return i.Left >= _leftmost64Bit
+func (ip *IPv6Address) IsLeftBitSet() bool {
+	return ip.Left >= _leftmost64Bit
 }

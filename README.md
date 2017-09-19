@@ -1,5 +1,5 @@
-Garbage collector-aware patricia tree for IP/CIDR tagging
-=========================================================
+Garbage collector-sensitive patricia tree for IP/CIDR tagging
+=============================================================
 
 What is this?
 -------------
