@@ -9,7 +9,7 @@ import (
 // this is IPv4 tree code that's not very copy/paste friendly for when we transfer IPv4 code to IPv6
 
 // create a new node in the tree, return its index
-func (t *TreeV4) newNode(address *patricia.IPv4Address, prefixLength uint) uint {
+func (t *TreeV4) newNode(address patricia.IPv4Address, prefixLength uint) uint {
 	availCount := len(t.availableIndexes)
 	if availCount > 0 {
 		index := t.availableIndexes[availCount-1]

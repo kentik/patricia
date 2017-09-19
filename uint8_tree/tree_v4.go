@@ -84,7 +84,7 @@ func (t *TreeV4) deleteTag(nodeIndex uint, matchTag uint8, matchFunc MatchesFunc
 }
 
 // Add adds a node to the tree
-func (t *TreeV4) Add(address *patricia.IPv4Address, tag uint8) error {
+func (t *TreeV4) Add(address patricia.IPv4Address, tag uint8) error {
 	// make sure we have more than enough capacity before we start adding to the tree, which invalidates pointers into the array
 	if (len(t.availableIndexes) + cap(t.nodes)) < (len(t.nodes) + 10) {
 		temp := make([]treeNodeV4, len(t.nodes), (cap(t.nodes)+1)*2)
@@ -95,7 +95,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag uint8) error {
 	root := &t.nodes[1]
 
 	// handle root tags
-	if address == nil || address.Length == 0 {
+	if address.Length == 0 {
 		t.addTag(tag, 1)
 		return nil
 	}
@@ -242,7 +242,7 @@ func (t *TreeV4) Add(address *patricia.IPv4Address, tag uint8) error {
 }
 
 // Delete a tag from the tree if it matches matchVal, as determined by matchFunc. Returns how many tags are removed
-func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, matchVal uint8) (int, error) {
+func (t *TreeV4) Delete(address patricia.IPv4Address, matchFunc MatchesFunc, matchVal uint8) (int, error) {
 	// traverse the tree, finding the node and its parent
 	root := &t.nodes[1]
 	var parentIndex uint
@@ -250,7 +250,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 	var targetNode *treeNodeV4
 	var targetNodeIndex uint
 
-	if address == nil || address.Length == 0 {
+	if address.Length == 0 {
 		// caller just looking for root tags
 		targetNode = root
 		targetNodeIndex = 1
@@ -400,7 +400,7 @@ func (t *TreeV4) Delete(address *patricia.IPv4Address, matchFunc MatchesFunc, ma
 }
 
 // FindTagsWithFilter finds all matching tags that passes the filter function
-func (t *TreeV4) FindTagsWithFilter(address *patricia.IPv4Address, filterFunc FilterFunc) ([]uint8, error) {
+func (t *TreeV4) FindTagsWithFilter(address patricia.IPv4Address, filterFunc FilterFunc) ([]uint8, error) {
 	root := &t.nodes[1]
 	if filterFunc == nil {
 		return t.FindTags(address)
@@ -417,7 +417,7 @@ func (t *TreeV4) FindTagsWithFilter(address *patricia.IPv4Address, filterFunc Fi
 		}
 	}
 
-	if address == nil || address.Length == 0 {
+	if address.Length == 0 {
 		// caller just looking for root tags
 		return ret, nil
 	}
@@ -469,7 +469,7 @@ func (t *TreeV4) FindTagsWithFilter(address *patricia.IPv4Address, filterFunc Fi
 }
 
 // FindTags finds all matching tags that passes the filter function
-func (t *TreeV4) FindTags(address *patricia.IPv4Address) ([]uint8, error) {
+func (t *TreeV4) FindTags(address patricia.IPv4Address) ([]uint8, error) {
 	var matchCount uint
 	root := &t.nodes[1]
 	ret := make([]uint8, 0)
@@ -478,7 +478,7 @@ func (t *TreeV4) FindTags(address *patricia.IPv4Address) ([]uint8, error) {
 		ret = append(ret, t.tagsForNode(1)...)
 	}
 
-	if address == nil || address.Length == 0 {
+	if address.Length == 0 {
 		// caller just looking for root tags
 		return ret, nil
 	}
@@ -526,7 +526,7 @@ func (t *TreeV4) FindTags(address *patricia.IPv4Address) ([]uint8, error) {
 }
 
 // FindDeepestTag finds a tag at the deepest level in the tree, representing the closest match
-func (t *TreeV4) FindDeepestTag(address *patricia.IPv4Address) (bool, uint8, error) {
+func (t *TreeV4) FindDeepestTag(address patricia.IPv4Address) (bool, uint8, error) {
 	root := &t.nodes[1]
 	var found bool
 	var ret uint8

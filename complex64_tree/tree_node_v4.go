@@ -15,7 +15,7 @@ type treeNodeV4 struct {
 }
 
 // See how many bits match the input address
-func (n *treeNodeV4) MatchCount(address *patricia.IPv4Address) uint {
+func (n *treeNodeV4) MatchCount(address patricia.IPv4Address) uint {
 	var length uint
 	if address.Length > n.prefixLength {
 		length = n.prefixLength

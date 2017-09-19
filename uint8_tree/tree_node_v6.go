@@ -16,7 +16,7 @@ type treeNodeV6 struct {
 	TagCount     uint
 }
 
-func (n *treeNodeV6) MatchCount(address *patricia.IPv6Address) uint {
+func (n *treeNodeV6) MatchCount(address patricia.IPv6Address) uint {
 	length := address.Length
 	if length > n.prefixLength {
 		length = n.prefixLength
