@@ -6,14 +6,14 @@ What is this?
 
 A Go implemenation of a [patricia tree](https://en.wikipedia.org/wiki/Radix_tree) (radix tree with radix=2), specifically for
 tagging IPv4 and IPv6 addresses with CIDR bits, with a focus on producing as little garbage for the garbage collector to
-manage. This allows you to tag millions of IP addresses without incurring a penalty during GC scanning.
+manage as possible. This allows you to tag millions of IP addresses without incurring a penalty during GC scanning.
 
 
 IP/CIDR tagging
 ---------------
 
 IP addresses can be tagged by any of the built-in types that we generate trees for. It's no accident that we don't support
-pointers, slices, or `interface{}` for reasons described blow. Once your IPv4 or IPv6 tree is initialized, you can tag a full
+pointers, slices, or `interface{}` for reasons described below. Once your IPv4 or IPv6 tree is initialized, you can tag a full
 32/128 bit address, or IP/CIDR.
 
 For example, on an IPv4 tree, you can create the following tags:
