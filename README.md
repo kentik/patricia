@@ -13,7 +13,7 @@ IP/CIDR tagging
 ---------------
 
 IP addresses can be tagged by any of the built-in types that we generate trees for. It's no accident that we don't support
-pointers, slices, or `interface{}` for reasons described blow. Once your IPv4 or IPv6 tree is initialized, you can tag a full
+pointers, slices, or `interface{}` for reasons described below. Once your IPv4 or IPv6 tree is initialized, you can tag a full
 32/128 bit address, or IP/CIDR.
 
 For example, on an IPv4 tree, you can create the following tags:
