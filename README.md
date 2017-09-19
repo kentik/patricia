@@ -6,7 +6,7 @@ What is this?
 
 A Go implemenation of a [patricia tree](https://en.wikipedia.org/wiki/Radix_tree) (radix tree with radix=2), specifically for
 tagging IPv4 and IPv6 addresses with CIDR bits, with a focus on producing as little garbage for the garbage collector to
-manage. This allows you to tag millions of IP addresses without incurring a penalty during GC scanning.
+manage as possible. This allows you to tag millions of IP addresses without incurring a penalty during GC scanning.
 
 
 IP/CIDR tagging
