@@ -14,9 +14,9 @@ type TreeV6 struct {
 }
 
 // NewTreeV6 returns a new Tree
-func NewTreeV6(startingCapacity uint) *TreeV6 {
+func NewTreeV6() *TreeV6 {
 	return &TreeV6{
-		nodes:            make([]treeNodeV6, 2, startingCapacity), // index 0 is skipped, 1 is root
+		nodes:            make([]treeNodeV6, 2, 2), // index 0 is skipped, 1 is root
 		availableIndexes: make([]uint, 0),
 		tags:             make(map[uint64]rune),
 	}
@@ -86,7 +86,7 @@ func (t *TreeV6) deleteTag(nodeIndex uint, matchTag rune, matchFunc MatchesFunc)
 // Add adds a node to the tree
 func (t *TreeV6) Add(address *patricia.IPv6Address, tag rune) error {
 	// make sure we have more than enough capacity before we start adding to the tree, which invalidates pointers into the array
-	if cap(t.nodes) < (len(t.nodes) + 10) {
+	if (len(t.availableIndexes) + cap(t.nodes)) < (len(t.nodes) + 10) {
 		temp := make([]treeNodeV6, len(t.nodes), (cap(t.nodes)+1)*2)
 		copy(temp, t.nodes)
 		t.nodes = temp
@@ -360,29 +360,35 @@ func (t *TreeV6) Delete(address *patricia.IPv6Address, matchFunc MatchesFunc, ma
 			parent.Left = 0
 			if parentIndex > 1 && parent.TagCount == 0 && parent.Right != 0 {
 				// parent isn't root, has no tags, and there's a sibling - merge sibling into parent
-				tmpNode := &t.nodes[parent.Right]
+				siblingIndexToDelete := parent.Right
+				tmpNode := &t.nodes[siblingIndexToDelete]
 				parent.MergeFromNodes(parent, tmpNode)
 
 				// move tags
-				t.moveTags(parent.Right, parentIndex)
+				t.moveTags(siblingIndexToDelete, parentIndex)
 
 				// parent now gets target's sibling's children
-				parent.Left = t.nodes[parent.Right].Left
-				parent.Right = t.nodes[parent.Right].Right
+				parent.Left = t.nodes[siblingIndexToDelete].Left
+				parent.Right = t.nodes[siblingIndexToDelete].Right
+
+				t.availableIndexes = append(t.availableIndexes, siblingIndexToDelete)
 			}
 		} else {
 			parent.Right = 0
 			if parentIndex > 1 && parent.TagCount == 0 && parent.Left != 0 {
 				// parent isn't root, has no tags, and there's a sibling - merge sibling into parent
-				tmpNode := &t.nodes[parent.Left]
+				siblingIndexToDelete := parent.Left
+				tmpNode := &t.nodes[siblingIndexToDelete]
 				parent.MergeFromNodes(parent, tmpNode)
 
 				// move tags
-				t.moveTags(parent.Left, parentIndex)
+				t.moveTags(siblingIndexToDelete, parentIndex)
 
 				// parent now gets target's sibling's children
 				parent.Right = t.nodes[parent.Left].Right
 				parent.Left = t.nodes[parent.Left].Left
+
+				t.availableIndexes = append(t.availableIndexes, siblingIndexToDelete)
 			}
 		}
 	}
