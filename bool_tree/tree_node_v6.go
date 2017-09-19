@@ -8,8 +8,8 @@ const _leftmost64Bit = uint64(1 << 63)
 
 type treeNodeV6 struct {
 	treeNode
-	Left         uint // left node index: -1 for not set
-	Right        uint // right node index: -1 for not set
+	Left         uint // left node index: 0 for not set
+	Right        uint // right node index: 0 for not set
 	prefixLeft   uint64
 	prefixRight  uint64
 	prefixLength uint

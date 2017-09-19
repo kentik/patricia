@@ -7,8 +7,8 @@ import (
 const _leftmost32Bit = uint32(1 << 31)
 
 type treeNodeV4 struct {
-	Left         uint // left node index: -1 for not set
-	Right        uint // right node index: -1 for not set
+	Left         uint // left node index: 0 for not set
+	Right        uint // right node index: 0 for not set
 	prefix       uint32
 	prefixLength uint
 	TagCount     uint
