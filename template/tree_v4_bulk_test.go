@@ -16,12 +16,15 @@ func TestBulkLoad(t *testing.T) {
 	filePath := "./test_tags.tsv"
 	recordsToLoad := -1 // -1 == all
 
-	tree := NewTreeV4(20000000)
-	ipToTags := make(map[string]string)
-	ips := make([]string, 0)
+	tree := NewTreeV4()
+	var ipToTags map[string]string
+	var ips []string
 
 	// insert the tags
 	load := func() {
+		ipToTags = make(map[string]string)
+		ips = make([]string, 0)
+
 		file, err := os.Open(filePath)
 		if err != nil {
 			log.Fatal(err)
@@ -66,52 +69,68 @@ func TestBulkLoad(t *testing.T) {
 		}
 		fmt.Printf("done - loaded %d tags\n", recordsLoaded)
 		fmt.Printf("tree says loaded %d tags into %d nodes\n", tree.countTags(1), tree.countNodes(1))
-		assert.Equal(t, uint(recordsLoaded), tree.countTags(1))
+		assert.Equal(t, recordsLoaded, int(tree.countTags(1)))
 	}
 
-	load()
-	//tree.print()
-
-	// query all tags from each address, query specific tag from each address, delete the tag
-	for _, address := range ips {
-		tag := ipToTags[address]
-		v4Original, v6, err := patricia.ParseIPFromString(address)
-		if err != nil {
-			panic(fmt.Sprintf("search: Could not parse IP '%s': %s", address, err))
-		}
-		if v4Original != nil {
-			v4 := *v4Original
-			foundTags, err := tree.FindTags(&v4)
-			assert.NoError(t, err)
-			if assert.True(t, len(foundTags) > 0, "Couldn't find tags for "+address) {
-				assert.True(t, tag == foundTags[len(foundTags)-1])
+	evaluate := func() {
+		fmt.Printf("# of nodes: %d\n", len(tree.nodes))
+		// query all tags from each address, query specific tag from each address, delete the tag
+		for _, address := range ips {
+			tag := ipToTags[address]
+			v4Original, v6, err := patricia.ParseIPFromString(address)
+			if err != nil {
+				panic(fmt.Sprintf("search: Could not parse IP '%s': %s", address, err))
 			}
+			if v4Original != nil {
+				v4 := *v4Original
+				foundTags, err := tree.FindTags(&v4)
+				assert.NoError(t, err)
+				if assert.True(t, len(foundTags) > 0, "Couldn't find tags for "+address) {
+					assert.True(t, tag == foundTags[len(foundTags)-1])
+				}
 
-			v4 = *v4Original
-			found, foundTag, err := tree.FindDeepestTag(&v4)
-			assert.NoError(t, err)
-			assert.True(t, found, "Couldn't find deepest tag")
-			assert.True(t, tag == foundTag)
+				v4 = *v4Original
+				found, foundTag, err := tree.FindDeepestTag(&v4)
+				assert.NoError(t, err)
+				assert.True(t, found, "Couldn't find deepest tag")
+				assert.True(t, tag == foundTag)
 
-			// delete the tags now
-			//fmt.Printf("Deleting %s: %s\n", address, tag)
-			v4 = *v4Original
-			deleteCount, err := tree.Delete(&v4, func(a GeneratedType, b GeneratedType) bool { return a == b }, tag)
-			assert.NoError(t, err)
-			assert.Equal(t, 1, deleteCount, "Tried deleting tag")
-			//tree.print()
-		} else if v6 == nil {
-			panic(fmt.Sprintf("search: Didn't get v4 or v6 address from address: '%s'", address))
+				// delete the tags now
+				//fmt.Printf("Deleting %s: %s\n", address, tag)
+				v4 = *v4Original
+				deleteCount, err := tree.Delete(&v4, func(a GeneratedType, b GeneratedType) bool { return a == b }, tag)
+				assert.NoError(t, err)
+				assert.Equal(t, 1, deleteCount, "Tried deleting tag")
+				//tree.print()
+			} else if v6 == nil {
+				panic(fmt.Sprintf("search: Didn't get v4 or v6 address from address: '%s'", address))
+			}
 		}
+		// should be nothing left
+		assert.Equal(t, uint(0), tree.countTags(1))
+		assert.Equal(t, 1, tree.countNodes(1))
+		fmt.Printf("Finished looping, finding, deleting - Tree now has %d tags in %d logical nodes, %d capacity, %d node objects in use, %d available indexes\n", tree.countTags(1), tree.countNodes(1), cap(tree.nodes), len(tree.nodes), len(tree.availableIndexes))
 	}
 
-	// should be nothing left
-	assert.Equal(t, uint(0), tree.countTags(1))
-	assert.Equal(t, 1, tree.countNodes(1))
+	//tree.print()
+	load()
+	evaluate()
+	nodesCapacity := cap(tree.nodes)
+	nodesLength := len(tree.nodes)
+	fmt.Printf("Finished first pass - node capacity: %d\n", cap(tree.nodes))
 
+	// do it again a few times, and make sure the nodes array hasn't grown
+	load()
+	evaluate()
+	load()
+	evaluate()
+	load()
+	evaluate()
+	load()
+	evaluate()
+	assert.Equal(t, nodesLength, len(tree.nodes))
+	assert.Equal(t, nodesCapacity, cap(tree.nodes))
 	fmt.Printf("Finished looping, finding, deleting - Tree now has %d tags in %d nodes\n", tree.countTags(1), tree.countNodes(1))
-
-	//load()
 	//print()
 }
 

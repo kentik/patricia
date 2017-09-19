@@ -28,7 +28,7 @@ func BenchmarkFindTagsV6(b *testing.B) {
 	tagC := "tagC"
 	tagZ := "tagD"
 
-	tree := NewTreeV6(2) // intentionally kept low to stress our resizing path
+	tree := NewTreeV6()
 
 	tree.Add(nil, tagZ) // default
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128), tagA)
@@ -43,7 +43,7 @@ func BenchmarkFindTagsV6(b *testing.B) {
 }
 
 func BenchmarkFindDeepestTagV6(b *testing.B) {
-	tree := NewTreeV6(2) // intentionally kept low to stress our resizing path
+	tree := NewTreeV6()
 	for i := 128; i > 0; i-- {
 		tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", i), fmt.Sprintf("Tag-%d", i))
 	}
@@ -55,7 +55,7 @@ func BenchmarkFindDeepestTagV6(b *testing.B) {
 }
 
 func TestSimpleTreeV6(t *testing.T) {
-	tree := NewTreeV6(2) // intentionally kept low to stress our resizing path
+	tree := NewTreeV6()
 
 	for i := 128; i > 0; i-- {
 		err := tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", i), fmt.Sprintf("Tag-%d", i))
@@ -132,7 +132,7 @@ func TestTree1V6(t *testing.T) {
 	tagC := "tagC"
 	tagZ := "tagD"
 
-	tree := NewTreeV6(2)                                          // intentionally kept low to stress our resizing path
+	tree := NewTreeV6()
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 0), tagZ) // default
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 100), tagA)
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 67), tagB)
@@ -175,7 +175,7 @@ func TestTree1V6WithFilter(t *testing.T) {
 		return val == "tagA" || val == "tagB"
 	}
 
-	tree := NewTreeV6(2)                                          // intentionally kept low to stress our resizing path
+	tree := NewTreeV6()
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 0), tagZ) // default
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 100), tagA)
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 67), tagB)
@@ -216,7 +216,7 @@ func TestRootNodeV6(t *testing.T) {
 	tagD := "tagD"
 	tagZ := "tagE"
 
-	tree := NewTreeV6(2) // intentionally kept low to stress our resizing path
+	tree := NewTreeV6()
 
 	// root node gets tags A & B
 	tree.Add(nil, tagA)
@@ -261,7 +261,7 @@ func TestDelete1V6(t *testing.T) {
 	tagC := "tagC"
 	tagZ := "tagZ"
 
-	tree := NewTreeV6(2) // intentionally kept low to stress our resizing path
+	tree := NewTreeV6()
 	assert.Equal(t, 1, tree.countNodes(1))
 	tree.Add(nil, tagZ) // default
 	assert.Equal(t, 1, tree.countNodes(1))
