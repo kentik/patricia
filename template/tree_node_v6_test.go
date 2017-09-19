@@ -27,7 +27,7 @@ func TestV6MatchCount(t *testing.T) {
 			expected = 84
 		}
 
-		address := &patricia.IPv6Address{
+		address := patricia.IPv6Address{
 			Left:   addressLeft,
 			Right:  uint64(0xFFFFFFFFFFFFFFFF),
 			Length: 128,
@@ -48,7 +48,7 @@ func TestV6MatchCount(t *testing.T) {
 		if i > 64 {
 			expected = 84
 		}
-		address := &patricia.IPv6Address{
+		address := patricia.IPv6Address{
 			Left:   addressLeft,
 			Right:  uint64(0xFFFFFFFFFFFFFFFF),
 			Length: 84,

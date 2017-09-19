@@ -16,7 +16,7 @@ func TestV4MatchCount(t *testing.T) {
 	// test moving the non-matching bit forward, making sure we never return more than the length of the prefix
 	addr := uint32(0xFFFFFFFF)
 	for i := 1; i < 32; i++ {
-		address := &patricia.IPv4Address{
+		address := patricia.IPv4Address{
 			Address: clearBit32(addr, uint32(i)),
 			Length:  32,
 		}
@@ -31,7 +31,7 @@ func TestV4MatchCount(t *testing.T) {
 			expected = 16
 		}
 
-		address := &patricia.IPv4Address{
+		address := patricia.IPv4Address{
 			Address: clearBit32(addr, uint32(i)),
 			Length:  32,
 		}
@@ -46,7 +46,7 @@ func TestV4MatchCount(t *testing.T) {
 			expected = 16
 		}
 
-		address := &patricia.IPv4Address{
+		address := patricia.IPv4Address{
 			Address: clearBit32(addr, uint32(i)),
 			Length:  16,
 		}

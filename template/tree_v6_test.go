@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func ipv6FromString(address string, length int) *patricia.IPv6Address {
+func ipv6FromString(address string, length int) patricia.IPv6Address {
 	ip, _, err := net.ParseCIDR(address)
 	if err != nil {
 		panic(fmt.Sprintf("Invalid IP address: %s: %s", address, err))
 	}
-	return &patricia.IPv6Address{
+	return patricia.IPv6Address{
 		Left:   binary.BigEndian.Uint64([]byte(ip[:8])),
 		Right:  binary.BigEndian.Uint64([]byte(ip[8:])),
 		Length: uint(length),
@@ -30,7 +30,7 @@ func BenchmarkFindTagsV6(b *testing.B) {
 
 	tree := NewTreeV6()
 
-	tree.Add(nil, tagZ) // default
+	tree.Add(patricia.IPv6Address{}, tagZ) // default
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128), tagA)
 	tree.Add(ipv6FromString("2001:db8:0:0:0:5:2:1/128", 16), tagB) // 160 -> 128
 	tree.Add(ipv6FromString("2001:db7:0:0:0:0:2:1/128", 77), tagC)
@@ -114,10 +114,10 @@ func TestSimpleTreeV6(t *testing.T) {
 	// Add a couple root tags
 	err = tree.Add(ipv6FromString("2001:db8:1:0:0:0:2:1/128", 0), "root1")
 	assert.NoError(t, err)
-	err = tree.Add(nil, "root2")
+	err = tree.Add(patricia.IPv6Address{}, "root2")
 	assert.NoError(t, err)
 
-	tags, err = tree.FindTags(nil)
+	tags, err = tree.FindTags(patricia.IPv6Address{})
 	assert.NoError(t, err)
 	if assert.Equal(t, 2, len(tags)) {
 		assert.Equal(t, "root1", tags[0].(string))
@@ -219,11 +219,11 @@ func TestRootNodeV6(t *testing.T) {
 	tree := NewTreeV6()
 
 	// root node gets tags A & B
-	tree.Add(nil, tagA)
-	tree.Add(nil, tagB)
+	tree.Add(patricia.IPv6Address{}, tagA)
+	tree.Add(patricia.IPv6Address{}, tagB)
 
 	// query the root node with no address
-	tags, err := tree.FindTags(nil)
+	tags, err := tree.FindTags(patricia.IPv6Address{})
 	assert.NoError(t, err)
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB}))
 
@@ -263,7 +263,7 @@ func TestDelete1V6(t *testing.T) {
 
 	tree := NewTreeV6()
 	assert.Equal(t, 1, tree.countNodes(1))
-	tree.Add(nil, tagZ) // default
+	tree.Add(patricia.IPv6Address{}, tagZ) // default
 	assert.Equal(t, 1, tree.countNodes(1))
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/67", 67), tagA) // 1000000
 	assert.Equal(t, 2, tree.countNodes(1))

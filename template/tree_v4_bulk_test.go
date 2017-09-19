@@ -57,7 +57,7 @@ func TestBulkLoad(t *testing.T) {
 				panic(fmt.Sprintf("insert: Could not parse IP '%s': %s", parts[0], err))
 			}
 			if v4 != nil {
-				tree.Add(v4, parts[1])
+				tree.Add(*v4, parts[1])
 				continue
 			}
 			if v6 == nil {
@@ -77,28 +77,25 @@ func TestBulkLoad(t *testing.T) {
 		// query all tags from each address, query specific tag from each address, delete the tag
 		for _, address := range ips {
 			tag := ipToTags[address]
-			v4Original, v6, err := patricia.ParseIPFromString(address)
+			v4, v6, err := patricia.ParseIPFromString(address)
 			if err != nil {
 				panic(fmt.Sprintf("search: Could not parse IP '%s': %s", address, err))
 			}
-			if v4Original != nil {
-				v4 := *v4Original
-				foundTags, err := tree.FindTags(&v4)
+			if v4 != nil {
+				foundTags, err := tree.FindTags(*v4)
 				assert.NoError(t, err)
 				if assert.True(t, len(foundTags) > 0, "Couldn't find tags for "+address) {
 					assert.True(t, tag == foundTags[len(foundTags)-1])
 				}
 
-				v4 = *v4Original
-				found, foundTag, err := tree.FindDeepestTag(&v4)
+				found, foundTag, err := tree.FindDeepestTag(*v4)
 				assert.NoError(t, err)
 				assert.True(t, found, "Couldn't find deepest tag")
 				assert.True(t, tag == foundTag)
 
 				// delete the tags now
 				//fmt.Printf("Deleting %s: %s\n", address, tag)
-				v4 = *v4Original
-				deleteCount, err := tree.Delete(&v4, func(a GeneratedType, b GeneratedType) bool { return a == b }, tag)
+				deleteCount, err := tree.Delete(*v4, func(a GeneratedType, b GeneratedType) bool { return a == b }, tag)
 				assert.NoError(t, err)
 				assert.Equal(t, 1, deleteCount, "Tried deleting tag")
 				//tree.print()
