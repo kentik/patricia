@@ -78,6 +78,123 @@ func BenchmarkBuildTreeAndFindDeepestTag(b *testing.B) {
 	}
 }
 
+func TestTree2(t *testing.T) {
+	tree := NewTreeV4()
+
+	// insert a bunch of tags
+	v4, _, err := patricia.ParseIPFromString("188.212.216.242")
+	assert.NoError(t, err)
+	assert.NotNil(t, v4)
+	tree.Add(v4, "a")
+
+	v4, _, err = patricia.ParseIPFromString("171.233.143.228")
+	assert.NoError(t, err)
+	assert.NotNil(t, v4)
+	tree.Add(v4, "b")
+
+	v4, _, err = patricia.ParseIPFromString("186.244.183.12")
+	assert.NoError(t, err)
+	assert.NotNil(t, v4)
+	tree.Add(v4, "c")
+
+	v4, _, err = patricia.ParseIPFromString("171.233.143.222")
+	assert.NoError(t, err)
+	assert.NotNil(t, v4)
+	tree.Add(v4, "d")
+
+	v4, _, err = patricia.ParseIPFromString("190.207.189.24")
+	assert.NoError(t, err)
+	assert.NotNil(t, v4)
+	tree.Add(v4, "e")
+
+	v4, _, err = patricia.ParseIPFromString("188.212.216.240")
+	assert.NoError(t, err)
+	assert.NotNil(t, v4)
+	tree.Add(v4, "f")
+
+	v4, _, err = patricia.ParseIPFromString("185.76.10.148")
+	assert.NoError(t, err)
+	assert.NotNil(t, v4)
+	tree.Add(v4, "g")
+
+	v4, _, err = patricia.ParseIPFromString("14.208.248.50")
+	assert.NoError(t, err)
+	assert.NotNil(t, v4)
+	tree.Add(v4, "h")
+
+	v4, _, err = patricia.ParseIPFromString("59.60.75.52")
+	assert.NoError(t, err)
+	assert.NotNil(t, v4)
+	tree.Add(v4, "i")
+
+	v4, _, err = patricia.ParseIPFromString("185.76.10.146")
+	assert.NoError(t, err)
+	assert.NotNil(t, v4)
+	tree.Add(v4, "j")
+
+	// --------
+	// now assert they're all found
+	v4, _, _ = patricia.ParseIPFromString("188.212.216.242")
+	found, tag, err := tree.FindDeepestTag(v4)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "a", tag)
+
+	v4, _, _ = patricia.ParseIPFromString("171.233.143.228")
+	found, tag, err = tree.FindDeepestTag(v4)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "b", tag)
+
+	v4, _, _ = patricia.ParseIPFromString("186.244.183.12")
+	found, tag, err = tree.FindDeepestTag(v4)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "c", tag)
+
+	v4, _, _ = patricia.ParseIPFromString("171.233.143.222")
+	found, tag, err = tree.FindDeepestTag(v4)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "d", tag)
+
+	v4, _, _ = patricia.ParseIPFromString("190.207.189.24")
+	found, tag, err = tree.FindDeepestTag(v4)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "e", tag)
+
+	v4, _, _ = patricia.ParseIPFromString("188.212.216.240")
+	found, tag, err = tree.FindDeepestTag(v4)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "f", tag)
+
+	v4, _, _ = patricia.ParseIPFromString("185.76.10.148")
+	found, tag, err = tree.FindDeepestTag(v4)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "g", tag)
+
+	v4, _, _ = patricia.ParseIPFromString("14.208.248.50")
+	found, tag, err = tree.FindDeepestTag(v4)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "h", tag)
+
+	v4, _, _ = patricia.ParseIPFromString("59.60.75.52")
+	found, tag, err = tree.FindDeepestTag(v4)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "i", tag)
+
+	v4, _, _ = patricia.ParseIPFromString("185.76.10.146")
+	found, tag, err = tree.FindDeepestTag(v4)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "j", tag)
+}
+
 func TestSimpleTree1(t *testing.T) {
 	tree := NewTreeV4()
 
