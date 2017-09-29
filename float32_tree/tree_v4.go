@@ -42,7 +42,7 @@ func (t *TreeV4) tagsForNode(nodeIndex uint) []float32 {
 	tagCount := t.nodes[nodeIndex].TagCount
 	ret := make([]float32, tagCount)
 	key := uint64(nodeIndex) << 32
-	for i := uint(0); i < tagCount; i++ {
+	for i := 0; i < tagCount; i++ {
 		ret[i] = t.tags[key+uint64(i)]
 	}
 	return ret
@@ -52,7 +52,7 @@ func (t *TreeV4) moveTags(fromIndex uint, toIndex uint) {
 	tagCount := t.nodes[fromIndex].TagCount
 	fromKey := uint64(fromIndex) << 32
 	toKey := uint64(toIndex) << 32
-	for i := uint(0); i < tagCount; i++ {
+	for i := 0; i < tagCount; i++ {
 		t.tags[toKey+uint64(i)] = t.tags[fromKey+uint64(i)]
 		delete(t.tags, fromKey+uint64(i))
 	}
@@ -72,7 +72,7 @@ func (t *TreeV4) deleteTag(nodeIndex uint, matchTag float32, matchFunc MatchesFu
 	tags := t.tagsForNode(nodeIndex)
 
 	// delete tags
-	for i := uint(0); i < t.nodes[nodeIndex].TagCount; i++ {
+	for i := 0; i < t.nodes[nodeIndex].TagCount; i++ {
 		delete(t.tags, (uint64(nodeIndex)<<32)+uint64(i))
 	}
 	t.nodes[nodeIndex].TagCount = 0
@@ -93,18 +93,21 @@ func (t *TreeV4) deleteTag(nodeIndex uint, matchTag float32, matchFunc MatchesFu
 }
 
 // Set the single value for a node - overwrites what's there
-func (t *TreeV4) Set(address patricia.IPv4Address, tag float32) error {
+// Returns how many tags at this address
+func (t *TreeV4) Set(address patricia.IPv4Address, tag float32) (int, error) {
 	return t.add(address, tag, true)
 }
 
 // Add adds a tag to the tree
-func (t *TreeV4) Add(address patricia.IPv4Address, tag float32) error {
+// Returns how many tags at this address
+func (t *TreeV4) Add(address patricia.IPv4Address, tag float32) (int, error) {
 	return t.add(address, tag, false)
 }
 
 // add a tag to the tree, optionally as the single value
 // - overwrites the first value in the list if 'replaceFirst' is true
-func (t *TreeV4) add(address patricia.IPv4Address, tag float32, replaceFirst bool) error {
+// - returns the number of tags at this address
+func (t *TreeV4) add(address patricia.IPv4Address, tag float32, replaceFirst bool) (int, error) {
 	// make sure we have more than enough capacity before we start adding to the tree, which invalidates pointers into the array
 	if (len(t.availableIndexes) + cap(t.nodes)) < (len(t.nodes) + 10) {
 		temp := make([]treeNodeV4, len(t.nodes), (cap(t.nodes)+1)*2)
@@ -117,7 +120,7 @@ func (t *TreeV4) add(address patricia.IPv4Address, tag float32, replaceFirst boo
 	// handle root tags
 	if address.Length == 0 {
 		t.addTag(tag, 1, replaceFirst)
-		return nil
+		return t.nodes[1].TagCount, nil
 	}
 
 	// root node doesn't have any prefix, so find the starting point
@@ -128,7 +131,7 @@ func (t *TreeV4) add(address patricia.IPv4Address, tag float32, replaceFirst boo
 			newNodeIndex := t.newNode(address, address.Length)
 			t.addTag(tag, newNodeIndex, replaceFirst)
 			root.Left = newNodeIndex
-			return nil
+			return t.nodes[newNodeIndex].TagCount, nil
 		}
 		nodeIndex = root.Left
 	} else {
@@ -136,7 +139,7 @@ func (t *TreeV4) add(address patricia.IPv4Address, tag float32, replaceFirst boo
 			newNodeIndex := t.newNode(address, address.Length)
 			t.addTag(tag, newNodeIndex, replaceFirst)
 			root.Right = newNodeIndex
-			return nil
+			return t.nodes[newNodeIndex].TagCount, nil
 		}
 		nodeIndex = root.Right
 	}
@@ -161,7 +164,7 @@ func (t *TreeV4) add(address patricia.IPv4Address, tag float32, replaceFirst boo
 			if matchCount == node.prefixLength {
 				// the whole prefix matched - we're done!
 				t.addTag(tag, nodeIndex, replaceFirst)
-				return nil
+				return t.nodes[nodeIndex].TagCount, nil
 			}
 
 			// the input address is shorter than the match found - need to create a new, intermediate parent
@@ -189,7 +192,7 @@ func (t *TreeV4) add(address patricia.IPv4Address, tag float32, replaceFirst boo
 				}
 				parent.Right = newNodeIndex
 			}
-			return nil
+			return t.nodes[newNodeIndex].TagCount, nil
 		}
 
 		if matchCount == node.prefixLength {
@@ -204,7 +207,7 @@ func (t *TreeV4) add(address patricia.IPv4Address, tag float32, replaceFirst boo
 					newNodeIndex := t.newNode(address, address.Length)
 					t.addTag(tag, newNodeIndex, replaceFirst)
 					node.Left = newNodeIndex
-					return nil
+					return t.nodes[newNodeIndex].TagCount, nil
 				}
 
 				// there's a node to the left - traverse it
@@ -219,7 +222,7 @@ func (t *TreeV4) add(address patricia.IPv4Address, tag float32, replaceFirst boo
 				newNodeIndex := t.newNode(address, address.Length)
 				t.addTag(tag, newNodeIndex, replaceFirst)
 				node.Right = newNodeIndex
-				return nil
+				return t.nodes[newNodeIndex].TagCount, nil
 			}
 
 			// there's a node to the right - traverse it
@@ -257,7 +260,7 @@ func (t *TreeV4) add(address patricia.IPv4Address, tag float32, replaceFirst boo
 			}
 			parent.Right = newCommonParentNodeIndex
 		}
-		return nil
+		return t.nodes[newNodeIndex].TagCount, nil
 	}
 }
 
@@ -616,7 +619,7 @@ func (t *TreeV4) countNodes(nodeIndex uint) int {
 	return nodeCount
 }
 
-func (t *TreeV4) countTags(nodeIndex uint) uint {
+func (t *TreeV4) countTags(nodeIndex uint) int {
 	node := &t.nodes[nodeIndex]
 
 	tagCount := node.TagCount

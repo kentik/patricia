@@ -13,7 +13,7 @@ type treeNodeV6 struct {
 	prefixLeft   uint64
 	prefixRight  uint64
 	prefixLength uint
-	TagCount     uint
+	TagCount     int
 }
 
 func (n *treeNodeV6) MatchCount(address patricia.IPv6Address) uint {

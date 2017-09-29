@@ -11,7 +11,7 @@ type treeNodeV4 struct {
 	Right        uint // right node index: 0 for not set
 	prefix       uint32
 	prefixLength uint
-	TagCount     uint
+	TagCount     int
 }
 
 // See how many bits match the input address
