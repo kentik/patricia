@@ -24,10 +24,14 @@ func NewTreeV6() *TreeV6 {
 
 // add a tag to the node at the input index, storing it in the first position
 // if 'replaceFirst' is true
-func (t *TreeV6) addTag(tag rune, nodeIndex uint, replaceFirst bool) {
+// - returns whether the tag count was increased
+func (t *TreeV6) addTag(tag rune, nodeIndex uint, replaceFirst bool) bool {
+	ret := true
 	if replaceFirst {
 		if t.nodes[nodeIndex].TagCount == 0 {
 			t.nodes[nodeIndex].TagCount = 1
+		} else {
+			ret = false
 		}
 		t.tags[(uint64(nodeIndex) << 32)] = tag
 	} else {
@@ -35,6 +39,7 @@ func (t *TreeV6) addTag(tag rune, nodeIndex uint, replaceFirst bool) {
 		t.tags[(uint64(nodeIndex)<<32)+(uint64(tagCount))] = tag
 		t.nodes[nodeIndex].TagCount++
 	}
+	return ret
 }
 
 func (t *TreeV6) tagsForNode(nodeIndex uint) []rune {
@@ -93,21 +98,21 @@ func (t *TreeV6) deleteTag(nodeIndex uint, matchTag rune, matchFunc MatchesFunc)
 }
 
 // Set the single value for a node - overwrites what's there
-// Returns how many tags at this address
-func (t *TreeV6) Set(address patricia.IPv6Address, tag rune) (int, error) {
+// Returns whether the tag count at this address was increased, and how many tags at this address
+func (t *TreeV6) Set(address patricia.IPv6Address, tag rune) (bool, int, error) {
 	return t.add(address, tag, true)
 }
 
 // Add adds a tag to the tree
-// Returns how many tags at this address
-func (t *TreeV6) Add(address patricia.IPv6Address, tag rune) (int, error) {
+// Returns whether the tag count at this address was increased, and how many tags at this address
+func (t *TreeV6) Add(address patricia.IPv6Address, tag rune) (bool, int, error) {
 	return t.add(address, tag, false)
 }
 
 // add a tag to the tree, optionally as the single value
 // - overwrites the first value in the list if 'replaceFirst' is true
-// - returns the number of tags at this address
-func (t *TreeV6) add(address patricia.IPv6Address, tag rune, replaceFirst bool) (int, error) {
+// - returns whether the tag count was increased, and the number of tags at this address
+func (t *TreeV6) add(address patricia.IPv6Address, tag rune, replaceFirst bool) (bool, int, error) {
 	// make sure we have more than enough capacity before we start adding to the tree, which invalidates pointers into the array
 	if (len(t.availableIndexes) + cap(t.nodes)) < (len(t.nodes) + 10) {
 		temp := make([]treeNodeV6, len(t.nodes), (cap(t.nodes)+1)*2)
@@ -119,8 +124,8 @@ func (t *TreeV6) add(address patricia.IPv6Address, tag rune, replaceFirst bool) 
 
 	// handle root tags
 	if address.Length == 0 {
-		t.addTag(tag, 1, replaceFirst)
-		return t.nodes[1].TagCount, nil
+		countIncreased := t.addTag(tag, 1, replaceFirst)
+		return countIncreased, t.nodes[1].TagCount, nil
 	}
 
 	// root node doesn't have any prefix, so find the starting point
@@ -129,17 +134,17 @@ func (t *TreeV6) add(address patricia.IPv6Address, tag rune, replaceFirst bool) 
 	if !address.IsLeftBitSet() {
 		if root.Left == 0 {
 			newNodeIndex := t.newNode(address, address.Length)
-			t.addTag(tag, newNodeIndex, replaceFirst)
+			countIncreased := t.addTag(tag, newNodeIndex, replaceFirst)
 			root.Left = newNodeIndex
-			return t.nodes[newNodeIndex].TagCount, nil
+			return countIncreased, t.nodes[newNodeIndex].TagCount, nil
 		}
 		nodeIndex = root.Left
 	} else {
 		if root.Right == 0 {
 			newNodeIndex := t.newNode(address, address.Length)
-			t.addTag(tag, newNodeIndex, replaceFirst)
+			countIncreased := t.addTag(tag, newNodeIndex, replaceFirst)
 			root.Right = newNodeIndex
-			return t.nodes[newNodeIndex].TagCount, nil
+			return countIncreased, t.nodes[newNodeIndex].TagCount, nil
 		}
 		nodeIndex = root.Right
 	}
@@ -163,14 +168,14 @@ func (t *TreeV6) add(address patricia.IPv6Address, tag rune, replaceFirst bool) 
 
 			if matchCount == node.prefixLength {
 				// the whole prefix matched - we're done!
-				t.addTag(tag, nodeIndex, replaceFirst)
-				return t.nodes[nodeIndex].TagCount, nil
+				countIncreased := t.addTag(tag, nodeIndex, replaceFirst)
+				return countIncreased, t.nodes[nodeIndex].TagCount, nil
 			}
 
 			// the input address is shorter than the match found - need to create a new, intermediate parent
 			newNodeIndex := t.newNode(address, address.Length)
 			newNode := &t.nodes[newNodeIndex]
-			t.addTag(tag, newNodeIndex, replaceFirst)
+			countIncreased := t.addTag(tag, newNodeIndex, replaceFirst)
 
 			// the existing node loses those matching bits, and becomes a child of the new node
 
@@ -192,7 +197,7 @@ func (t *TreeV6) add(address patricia.IPv6Address, tag rune, replaceFirst bool) 
 				}
 				parent.Right = newNodeIndex
 			}
-			return t.nodes[newNodeIndex].TagCount, nil
+			return countIncreased, t.nodes[newNodeIndex].TagCount, nil
 		}
 
 		if matchCount == node.prefixLength {
@@ -205,9 +210,9 @@ func (t *TreeV6) add(address patricia.IPv6Address, tag rune, replaceFirst bool) 
 				if node.Left == 0 {
 					// nowhere else to go - create a new node here
 					newNodeIndex := t.newNode(address, address.Length)
-					t.addTag(tag, newNodeIndex, replaceFirst)
+					countIncreased := t.addTag(tag, newNodeIndex, replaceFirst)
 					node.Left = newNodeIndex
-					return t.nodes[newNodeIndex].TagCount, nil
+					return countIncreased, t.nodes[newNodeIndex].TagCount, nil
 				}
 
 				// there's a node to the left - traverse it
@@ -220,9 +225,9 @@ func (t *TreeV6) add(address patricia.IPv6Address, tag rune, replaceFirst bool) 
 			if node.Right == 0 {
 				// nowhere else to go - create a new node here
 				newNodeIndex := t.newNode(address, address.Length)
-				t.addTag(tag, newNodeIndex, replaceFirst)
+				countIncreased := t.addTag(tag, newNodeIndex, replaceFirst)
 				node.Right = newNodeIndex
-				return t.nodes[newNodeIndex].TagCount, nil
+				return countIncreased, t.nodes[newNodeIndex].TagCount, nil
 			}
 
 			// there's a node to the right - traverse it
@@ -239,7 +244,7 @@ func (t *TreeV6) add(address patricia.IPv6Address, tag rune, replaceFirst bool) 
 		address.ShiftLeft(matchCount)
 
 		newNodeIndex := t.newNode(address, address.Length)
-		t.addTag(tag, newNodeIndex, replaceFirst)
+		countIncreased := t.addTag(tag, newNodeIndex, replaceFirst)
 
 		// see where the existing node fits - left or right
 		node.ShiftPrefix(matchCount)
@@ -260,7 +265,7 @@ func (t *TreeV6) add(address patricia.IPv6Address, tag rune, replaceFirst bool) 
 			}
 			parent.Right = newCommonParentNodeIndex
 		}
-		return t.nodes[newNodeIndex].TagCount, nil
+		return countIncreased, t.nodes[newNodeIndex].TagCount, nil
 	}
 }
 
