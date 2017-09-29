@@ -104,7 +104,7 @@ func TestBulkLoad(t *testing.T) {
 			}
 		}
 		// should be nothing left
-		assert.Equal(t, uint(0), tree.countTags(1))
+		assert.Equal(t, 0, tree.countTags(1))
 		assert.Equal(t, 1, tree.countNodes(1))
 		fmt.Printf("Finished looping, finding, deleting - Tree now has %d tags in %d logical nodes, %d capacity, %d node objects in use, %d available indexes\n", tree.countTags(1), tree.countNodes(1), cap(tree.nodes), len(tree.nodes), len(tree.availableIndexes))
 	}
