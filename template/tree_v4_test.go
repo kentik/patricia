@@ -459,6 +459,53 @@ func TestRootNode(t *testing.T) {
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC, tagD}))
 }
 
+// Test setting a value to a node, rather than adding to a list
+func TestSet(t *testing.T) {
+	address := ipv4FromBytes([]byte{1, 2, 3, 4}, 32)
+
+	tree := NewTreeV4()
+
+	// add a parent node, just to mix things up
+	err := tree.Set(ipv4FromBytes([]byte{1, 2, 3, 0}, 24), "parent")
+	assert.NoError(t, err)
+
+	err = tree.Set(address, "tagA")
+	assert.NoError(t, err)
+	found, tag, err := tree.FindDeepestTag(address)
+	assert.True(t, found)
+	assert.NoError(t, err)
+	assert.Equal(t, "tagA", tag)
+
+	err = tree.Set(address, "tagB")
+	found, tag, err = tree.FindDeepestTag(address)
+	assert.True(t, found)
+	assert.NoError(t, err)
+	assert.Equal(t, "tagB", tag)
+
+	tree.Set(address, "tagC")
+	found, tag, err = tree.FindDeepestTag(address)
+	assert.True(t, found)
+	assert.NoError(t, err)
+	assert.Equal(t, "tagC", tag)
+
+	tree.Set(address, "tagD")
+	found, tag, err = tree.FindDeepestTag(address)
+	assert.True(t, found)
+	assert.NoError(t, err)
+	assert.Equal(t, "tagD", tag)
+
+	// now delete the tag
+	count, err := tree.Delete(address, func(a GeneratedType, b GeneratedType) bool { return true }, "")
+	assert.Equal(t, 1, count)
+	assert.NoError(t, err)
+
+	// verify it's gone - should get the parent
+	found, tag, err = tree.FindDeepestTag(address)
+	assert.True(t, found)
+	assert.NoError(t, err)
+	assert.Equal(t, "parent", tag)
+}
+
 func TestDelete1(t *testing.T) {
 	matchFunc := func(tagData GeneratedType, val GeneratedType) bool {
 		return tagData.(string) == val.(string)
@@ -602,10 +649,10 @@ func TestTagsMap(t *testing.T) {
 	tree := NewTreeV4()
 
 	// insert tags
-	tree.addTag("tagA", 1)
-	tree.addTag("tagB", 1)
-	tree.addTag("tagC", 1)
-	tree.addTag("tagD", 0) // there's no node0, but it exists, so use it for this test
+	tree.addTag("tagA", 1, false)
+	tree.addTag("tagB", 1, false)
+	tree.addTag("tagC", 1, false)
+	tree.addTag("tagD", 0, false) // there's no node0, but it exists, so use it for this test
 
 	// verify
 	assert.Equal(t, uint(3), tree.nodes[1].TagCount)
