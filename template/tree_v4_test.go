@@ -268,8 +268,9 @@ func TestSimpleTree(t *testing.T) {
 	tree := NewTreeV4()
 
 	for i := 32; i > 0; i-- {
-		count, err := tree.Add(ipv4FromBytes([]byte{127, 0, 0, 1}, i), fmt.Sprintf("Tag-%d", i))
+		countIncreased, count, err := tree.Add(ipv4FromBytes([]byte{127, 0, 0, 1}, i), fmt.Sprintf("Tag-%d", i))
 		assert.NoError(t, err)
+		assert.True(t, countIncreased)
 		assert.Equal(t, 1, count)
 	}
 
@@ -313,11 +314,13 @@ func TestSimpleTree(t *testing.T) {
 	assert.Nil(t, tag)
 
 	// Add a couple root tags
-	count, err := tree.Add(ipv4FromBytes([]byte{127, 0, 0, 1}, 0), "root1")
+	countIncreased, count, err := tree.Add(ipv4FromBytes([]byte{127, 0, 0, 1}, 0), "root1")
 	assert.NoError(t, err)
+	assert.True(t, countIncreased)
 	assert.Equal(t, 1, count)
-	count, err = tree.Add(patricia.IPv4Address{}, "root2")
+	countIncreased, count, err = tree.Add(patricia.IPv4Address{}, "root2")
 	assert.NoError(t, err)
+	assert.True(t, countIncreased)
 	assert.Equal(t, 2, count)
 
 	tags, err = tree.FindTags(patricia.IPv4Address{})
@@ -467,16 +470,19 @@ func TestAdd(t *testing.T) {
 	address := ipv4FromBytes([]byte{1, 2, 3, 4}, 32)
 
 	tree := NewTreeV4()
-	count, err := tree.Add(address, "hi")
+	countIncreased, count, err := tree.Add(address, "hi")
 	assert.NoError(t, err)
+	assert.True(t, countIncreased)
 	assert.Equal(t, 1, count)
 
-	count, err = tree.Add(address, "hi")
+	countIncreased, count, err = tree.Add(address, "hi")
 	assert.NoError(t, err)
+	assert.True(t, countIncreased)
 	assert.Equal(t, 2, count)
 
-	count, err = tree.Add(address, "hi")
+	countIncreased, count, err = tree.Add(address, "hi")
 	assert.NoError(t, err)
+	assert.True(t, countIncreased)
 	assert.Equal(t, 3, count)
 }
 
@@ -487,36 +493,41 @@ func TestSet(t *testing.T) {
 	tree := NewTreeV4()
 
 	// add a parent node, just to mix things up
-	count, err := tree.Set(ipv4FromBytes([]byte{1, 2, 3, 0}, 24), "parent")
+	countIncreased, count, err := tree.Set(ipv4FromBytes([]byte{1, 2, 3, 0}, 24), "parent")
 	assert.NoError(t, err)
+	assert.True(t, countIncreased)
 	assert.Equal(t, 1, count)
 
-	count, err = tree.Set(address, "tagA")
+	countIncreased, count, err = tree.Set(address, "tagA")
 	assert.NoError(t, err)
+	assert.True(t, countIncreased)
 	assert.Equal(t, 1, count)
 	found, tag, err := tree.FindDeepestTag(address)
 	assert.True(t, found)
 	assert.NoError(t, err)
 	assert.Equal(t, "tagA", tag)
 
-	count, err = tree.Set(address, "tagB")
+	countIncreased, count, err = tree.Set(address, "tagB")
 	assert.Equal(t, 1, count)
+	assert.False(t, countIncreased)
 	assert.NoError(t, err)
 	found, tag, err = tree.FindDeepestTag(address)
 	assert.True(t, found)
 	assert.NoError(t, err)
 	assert.Equal(t, "tagB", tag)
 
-	count, err = tree.Set(address, "tagC")
+	countIncreased, count, err = tree.Set(address, "tagC")
 	assert.Equal(t, 1, count)
+	assert.False(t, countIncreased)
 	assert.NoError(t, err)
 	found, tag, err = tree.FindDeepestTag(address)
 	assert.True(t, found)
 	assert.NoError(t, err)
 	assert.Equal(t, "tagC", tag)
 
-	count, err = tree.Set(address, "tagD")
+	countIncreased, count, err = tree.Set(address, "tagD")
 	assert.Equal(t, 1, count)
+	assert.False(t, countIncreased)
 	assert.NoError(t, err)
 	found, tag, err = tree.FindDeepestTag(address)
 	assert.True(t, found)
