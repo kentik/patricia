@@ -344,22 +344,8 @@ func (t *TreeV6) Delete(address patricia.IPv6Address, matchFunc MatchesFunc, mat
 
 	// compact the tree, if possible
 	if targetNode.Left != 0 && targetNode.Right != 0 {
-		// target has two children
-		if parent.Left == 0 || parent.Right == 0 {
-			// parent has just the target node - move target node's children up
-			if parentIndex > 1 {
-				// parent isn't root - update its prefix
-				parent.Left = targetNode.Left
-				parent.Right = targetNode.Right
-				parent.MergeFromNodes(parent, targetNode)
-			} else {
-				// not deleting the node
-				return deleteCount, nil
-			}
-		} else {
-			// parent has another sibling of target - can't do anything
-			return deleteCount, nil
-		}
+		// target has two children - nothing we can do - not deleting the node
+		return deleteCount, nil
 	} else if targetNode.Left != 0 {
 		// target node only has only left child
 		if parent.Left == targetNodeIndex {
