@@ -1,8 +1,6 @@
 Garbage collector-sensitive patricia tree for IP/CIDR tagging
 =============================================================
 
-_**NOTE: There's a known add or delete issue: [details here](https://github.com/Kentik/patricia/issues/2)**_
-
 What is this?
 -------------
 
