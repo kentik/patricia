@@ -128,6 +128,14 @@ func TestBulkLoad(t *testing.T) {
 	assert.Equal(t, nodesLength, len(tree.nodes))
 	assert.Equal(t, nodesCapacity, cap(tree.nodes))
 	fmt.Printf("Finished looping, finding, deleting - Tree now has %d tags in %d nodes\n", tree.countTags(1), tree.countNodes(1))
+
+	// now try cloning
+	load()
+	tree = tree.Clone()
+	evaluate()
+	assert.Equal(t, nodesLength, len(tree.nodes))
+	assert.Equal(t, nodesCapacity, cap(tree.nodes))
+
 	//print()
 }
 
