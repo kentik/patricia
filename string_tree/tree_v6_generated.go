@@ -22,6 +22,27 @@ func NewTreeV6() *TreeV6 {
 	}
 }
 
+// Clone creates an identical copy of the tree
+// - Note: the items in the tree are not deep copied
+func (t *TreeV6) Clone() *TreeV6 {
+	ret := &TreeV6{
+		nodes:            make([]treeNodeV6, len(t.nodes), cap(t.nodes)),
+		availableIndexes: make([]uint, len(t.availableIndexes), cap(t.availableIndexes)),
+		tags:             make(map[uint64]string),
+	}
+
+	for i := range t.nodes {
+		ret.nodes[i] = t.nodes[i]
+	}
+	for i := range t.availableIndexes {
+		ret.availableIndexes[i] = t.availableIndexes[i]
+	}
+	for k, v := range t.tags {
+		ret.tags[k] = v
+	}
+	return ret
+}
+
 // add a tag to the node at the input index, storing it in the first position
 // if 'replaceFirst' is true
 // - returns whether the tag count was increased
