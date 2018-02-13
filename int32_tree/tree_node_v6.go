@@ -1,6 +1,8 @@
 package int32_tree
 
 import (
+	"math/bits"
+
 	"github.com/kentik/patricia"
 )
 
@@ -22,9 +24,9 @@ func (n *treeNodeV6) MatchCount(address patricia.IPv6Address) uint {
 		length = n.prefixLength
 	}
 
-	matches := uint(patricia.LeadingZeros64(n.prefixLeft ^ address.Left))
+	matches := uint(bits.LeadingZeros64(n.prefixLeft ^ address.Left))
 	if matches == 64 && length > 64 {
-		matches += uint(patricia.LeadingZeros64(n.prefixRight ^ address.Right))
+		matches += uint(bits.LeadingZeros64(n.prefixRight ^ address.Right))
 	}
 	if matches > length {
 		return length

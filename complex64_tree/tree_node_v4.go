@@ -1,6 +1,8 @@
 package complex64_tree
 
 import (
+	"math/bits"
+
 	"github.com/kentik/patricia"
 )
 
@@ -23,7 +25,7 @@ func (n *treeNodeV4) MatchCount(address patricia.IPv4Address) uint {
 		length = address.Length
 	}
 
-	matches := uint(patricia.LeadingZeros32(n.prefix ^ address.Address))
+	matches := uint(bits.LeadingZeros32(n.prefix ^ address.Address))
 	if matches > length {
 		return length
 	}
