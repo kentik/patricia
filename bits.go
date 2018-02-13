@@ -34,36 +34,6 @@ func initBuildLeftMasks() {
 	}
 }
 
-// LeadingZeros32 returns the number of leading zero bits in x; the result is 32 for x == 0.
-func LeadingZeros32(x uint32) (n int) {
-	if x >= 1<<16 {
-		x >>= 16
-		n = 16
-	}
-	if x >= 1<<8 {
-		x >>= 8
-		n += 8
-	}
-	return 32 - n - int(_len8tab[x])
-}
-
-// LeadingZeros64 returns the number of leading zero bits in x; the result is 64 for x == 0.
-func LeadingZeros64(x uint64) (n int) {
-	if x >= 1<<32 {
-		x >>= 32
-		n = 32
-	}
-	if x >= 1<<16 {
-		x >>= 16
-		n += 16
-	}
-	if x >= 1<<8 {
-		x >>= 8
-		n += 8
-	}
-	return 64 - n - int(_len8tab[x])
-}
-
 // MergePrefixes32 merges two 32-bit prefixes, returning new prefix, new length
 func MergePrefixes32(left uint32, leftLength uint, right uint32, rightLength uint) (uint32, uint) {
 	return (left & _leftMasks32[leftLength]) | ((right & _leftMasks32[rightLength]) >> leftLength), (leftLength + rightLength)
