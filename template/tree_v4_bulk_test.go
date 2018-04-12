@@ -57,7 +57,7 @@ func TestBulkLoad(t *testing.T) {
 				panic(fmt.Sprintf("insert: Could not parse IP '%s': %s", parts[0], err))
 			}
 			if v4 != nil {
-				tree.Add(*v4, parts[1])
+				tree.Add(*v4, parts[1], nil)
 				continue
 			}
 			if v6 == nil {
