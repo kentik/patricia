@@ -31,12 +31,8 @@ func (t *TreeV4) Clone() *TreeV4 {
 		tags:             make(map[uint64]uint),
 	}
 
-	for i := range t.nodes {
-		ret.nodes[i] = t.nodes[i]
-	}
-	for i := range t.availableIndexes {
-		ret.availableIndexes[i] = t.availableIndexes[i]
-	}
+	copy(ret.nodes, t.nodes)
+	copy(ret.availableIndexes, t.availableIndexes)
 	for k, v := range t.tags {
 		ret.tags[k] = v
 	}
