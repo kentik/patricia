@@ -28,7 +28,7 @@ func (t *TreeV4) Clone() *TreeV4 {
 	ret := &TreeV4{
 		nodes:            make([]treeNodeV4, len(t.nodes), cap(t.nodes)),
 		availableIndexes: make([]uint, len(t.availableIndexes), cap(t.availableIndexes)),
-		tags:             make(map[uint64]complex128),
+		tags:             make(map[uint64]complex128, len(t.tags)),
 	}
 
 	copy(ret.nodes, t.nodes)
