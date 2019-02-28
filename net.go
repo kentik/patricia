@@ -64,3 +64,16 @@ func ParseIPFromString(address string) (*IPv4Address, *IPv6Address, error) {
 
 	return nil, nil, fmt.Errorf("couldn't parse either v4 or v6 address")
 }
+
+func ParseFromIPAddr(ipNet *net.IPAddr) (*IPv4Address, *IPv6Address) {
+	if v6Addr := ipNet.IP.To16(); v6Addr != nil {
+		_, cidr := ipNet.Mask.Size()
+		ret := NewIPv6Address(v6Addr, cidr)
+		return nil, &ret
+	}
+	if v4Addr := ipNet.IP.To4(); v4Addr != nil {
+		_, cidr := ipNet.Mask.Size()
+		ret := NewIPv4AddressFromBytes(v4Addr, cidr)
+		return &ret, nil
+	}
+}
