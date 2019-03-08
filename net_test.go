@@ -89,7 +89,7 @@ func TestParseIPFromString(t *testing.T) {
 	assert.Equal(t, uint64(0x2001000000000000), v6IP.Left)
 	assert.Equal(t, uint64(0x0), v6IP.Right)
 
-	_, ipr, _ := net.ParseCIDR("127.0.0.1/10")
+	_, ipr, _ = net.ParseCIDR("127.0.0.1/10")
 	v4IP, v6IP, err = ParseFromIPAddr(ipr)
 	assert.NoError(t, err)
 	assert.NotNil(t, v4IP)
