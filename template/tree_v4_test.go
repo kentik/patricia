@@ -82,7 +82,13 @@ func TestTree2(t *testing.T) {
 	tree := NewTreeV4()
 
 	// insert a bunch of tags
-	v4, _, err := patricia.ParseIPFromString("188.212.216.242")
+	v4, _, err := patricia.ParseIPFromString("1.2.3.0/24")
+	assert.NoError(t, err)
+	assert.NotNil(t, v4)
+	tree.Add(*v4, "foo", nil)
+	tree.Add(*v4, "bar", nil)
+
+	v4, _, err = patricia.ParseIPFromString("188.212.216.242")
 	assert.NoError(t, err)
 	assert.NotNil(t, v4)
 	tree.Add(*v4, "a", nil)
@@ -131,6 +137,7 @@ func TestTree2(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, v4)
 	tree.Add(*v4, "j", nil)
+	tree.Add(*v4, "k", nil)
 
 	// --------
 	// now assert they're all found
@@ -193,6 +200,70 @@ func TestTree2(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, found)
 	assert.Equal(t, "j", tag)
+
+	v4, _, _ = patricia.ParseIPFromString("185.76.10.146")
+	found, tags, err := tree.FindDeepestTags(*v4)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "j", tags[0])
+	assert.Equal(t, "k", tags[1])
+
+	// test searching for addresses with no leaf nodes
+	v4, _, _ = patricia.ParseIPFromString("1.2.3.4")
+	found, tags, err = tree.FindDeepestTags(*v4)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "foo", tags[0])
+	assert.Equal(t, "bar", tags[1])
+
+	v4, _, _ = patricia.ParseIPFromString("1.2.3.5")
+	found, tags, err = tree.FindDeepestTags(*v4)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "foo", tags[0])
+	assert.Equal(t, "bar", tags[1])
+
+	v4, _, _ = patricia.ParseIPFromString("1.2.3.4")
+	found, tag, err = tree.FindDeepestTag(*v4)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "foo", tag)
+
+	// test searching for an address that has nothing
+	v4, _, _ = patricia.ParseIPFromString("9.9.9.9")
+	found, tags, err = tree.FindDeepestTags(*v4)
+	assert.NoError(t, err)
+	assert.False(t, found)
+	assert.NotNil(t, tags)
+	assert.Equal(t, 0, len(tags))
+
+	// test searching for an empty address
+	v4, _, _ = patricia.ParseIPFromString("9.9.9.9/0")
+	found, tags, err = tree.FindDeepestTags(*v4)
+	assert.NoError(t, err)
+	assert.False(t, found)
+	assert.NotNil(t, tags)
+	assert.Equal(t, 0, len(tags))
+
+	// add a root node tag and try again
+	v4, _, err = patricia.ParseIPFromString("1.1.1.1/0")
+	assert.NoError(t, err)
+	assert.NotNil(t, v4)
+	tree.Add(*v4, "root_node", nil)
+
+	v4, _, _ = patricia.ParseIPFromString("9.9.9.9/0")
+	found, tags, err = tree.FindDeepestTags(*v4)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.NotNil(t, tags)
+	assert.Equal(t, 1, len(tags))
+	assert.Equal(t, "root_node", tags[0])
+
+	v4, _, _ = patricia.ParseIPFromString("9.9.9.9/0")
+	found, tag, err = tree.FindDeepestTag(*v4)
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "root_node", tag)
 }
 
 // test that the find functions don't destroy an address - too brittle and confusing for caller for what gains?
