@@ -70,6 +70,11 @@ func (t *TreeV4) addTag(tag int16, nodeIndex uint, matchFunc MatchesFunc, replac
 }
 
 func (t *TreeV4) tagsForNode(nodeIndex uint) []int16 {
+	if nodeIndex == 0 {
+		// useful for base cases where we haven't found anything
+		return make([]int16, 0)
+	}
+
 	// TODO: clean up the typing in here, between uint, uint64
 	tagCount := t.nodes[nodeIndex].TagCount
 	ret := make([]int16, tagCount)
@@ -567,7 +572,7 @@ func (t *TreeV4) FindTags(address patricia.IPv4Address) ([]int16, error) {
 	}
 }
 
-// FindDeepestTag finds a tag at the deepest level in the tree, representing the closest match
+// FindDeepestTag finds a tag at the deepest level in the tree, representing the closest match.
 // - if that target node has multiple tags, the first in the list is returned
 func (t *TreeV4) FindDeepestTag(address patricia.IPv4Address) (bool, int16, error) {
 	root := &t.nodes[1]
@@ -613,6 +618,64 @@ func (t *TreeV4) FindDeepestTag(address patricia.IPv4Address) (bool, int16, erro
 		if matchCount == address.Length {
 			// exact match - we're done
 			return found, ret, nil
+		}
+
+		// there's still more address - keep traversing
+		address.ShiftLeft(matchCount)
+		if !address.IsLeftBitSet() {
+			nodeIndex = node.Left
+		} else {
+			nodeIndex = node.Right
+		}
+	}
+}
+
+// FindDeepestTags finds all tags at the deepest level in the tree, representing the closest match
+// - returns empty array if nothing found
+func (t *TreeV4) FindDeepestTags(address patricia.IPv4Address) (bool, []int16, error) {
+	root := &t.nodes[1]
+	var found bool
+	var retTagIndex uint
+
+	if root.TagCount > 0 {
+		retTagIndex = 1
+		found = true
+	}
+
+	if address.Length == 0 {
+		// caller just looking for root tags
+		return found, t.tagsForNode(retTagIndex), nil
+	}
+
+	var nodeIndex uint
+	if !address.IsLeftBitSet() {
+		nodeIndex = root.Left
+	} else {
+		nodeIndex = root.Right
+	}
+
+	// traverse the tree
+	for {
+		if nodeIndex == 0 {
+			return found, t.tagsForNode(retTagIndex), nil
+		}
+		node := &t.nodes[nodeIndex]
+
+		matchCount := node.MatchCount(address)
+		if matchCount < node.prefixLength {
+			// didn't match the entire node - we're done
+			return found, t.tagsForNode(retTagIndex), nil
+		}
+
+		// matched the full node - get its tags, then chop off the bits we've already matched and continue
+		if node.TagCount > 0 {
+			retTagIndex = nodeIndex
+			found = true
+		}
+
+		if matchCount == address.Length {
+			// exact match - we're done
+			return found, t.tagsForNode(retTagIndex), nil
 		}
 
 		// there's still more address - keep traversing
