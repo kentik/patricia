@@ -9,7 +9,6 @@ import (
 const _leftmost64Bit = uint64(1 << 63)
 
 type treeNodeV6 struct {
-	treeNode
 	Left         uint // left node index: 0 for not set
 	Right        uint // right node index: 0 for not set
 	prefixLeft   uint64
