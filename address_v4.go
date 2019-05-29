@@ -43,7 +43,7 @@ func (i *IPv4Address) IsLeftBitSet() bool {
 
 // String returns a string version of this IP address.
 // - not optimized for performance, alloates a byte slice
-func (i *IPv4Address) String() string {
+func (i IPv4Address) String() string {
 	data := make([]byte, 4)
 	binary.BigEndian.PutUint32(data, i.Address)
 
