@@ -65,6 +65,7 @@ func ParseIPFromString(address string) (*IPv4Address, *IPv6Address, error) {
 	return nil, nil, fmt.Errorf("couldn't parse either v4 or v6 address")
 }
 
+// ParseFromIPAddr builds an IPv4Address or IPv6Address from a net.IPNet
 func ParseFromIPAddr(ipNet *net.IPNet) (*IPv4Address, *IPv6Address, error) {
 	if ipNet == nil {
 		return nil, nil, fmt.Errorf("Nil address: %v", ipNet)
