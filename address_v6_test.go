@@ -12,11 +12,13 @@ func TestNewIPv6Address(t *testing.T) {
 	assert.Equal(t, uint64(0x0123456789A0A1A2), sut.Left)
 	assert.Equal(t, uint64(0xA3A4A5A6A7A8A9B0), sut.Right)
 	assert.Equal(t, uint(117), sut.Length)
+	assert.Equal(t, "123:4567:89a0:a1a2:a3a4:a5a6:a7a8:a9b0/117", sut.String())
 
 	sut = NewIPv6Address([]byte{0x01, 0x02}, 100)
 	assert.Equal(t, uint64(0), sut.Left)
 	assert.Equal(t, uint64(0), sut.Right)
 	assert.Equal(t, uint(0), sut.Length)
+	assert.Equal(t, "::/0", sut.String())
 }
 
 func TestShiftLeftOneBit(t *testing.T) {

@@ -2,6 +2,7 @@ package patricia
 
 import (
 	"encoding/binary"
+	"net"
 )
 
 const _leftmost64Bit = uint64(1 << 63)
@@ -66,4 +67,18 @@ func ShiftRightIPv6(left uint64, right uint64, bitCount uint) (uint64, uint64) {
 // IsLeftBitSet returns whether the leftmost bit is set
 func (ip *IPv6Address) IsLeftBitSet() bool {
 	return ip.Left >= _leftmost64Bit
+}
+
+// String returns a string version of this IP address.
+// - not optimized for performance, alloates a byte slice
+func (i *IPv6Address) String() string {
+	data := make([]byte, 16)
+	binary.BigEndian.PutUint64(data, i.Left)
+	binary.BigEndian.PutUint64(data[8:], i.Right)
+
+	ipNet := net.IPNet{
+		IP:   data,
+		Mask: net.CIDRMask(int(i.Length), 128),
+	}
+	return ipNet.String()
 }

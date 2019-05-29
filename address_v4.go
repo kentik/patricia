@@ -2,6 +2,7 @@ package patricia
 
 import (
 	"encoding/binary"
+	"net"
 )
 
 const _leftmost32Bit = uint32(1 << 31)
@@ -38,4 +39,17 @@ func (i *IPv4Address) ShiftLeft(shiftCount uint) {
 // IsLeftBitSet returns whether the leftmost bit is set
 func (i *IPv4Address) IsLeftBitSet() bool {
 	return i.Address >= _leftmost32Bit
+}
+
+// String returns a string version of this IP address.
+// - not optimized for performance, alloates a byte slice
+func (i *IPv4Address) String() string {
+	data := make([]byte, 4)
+	binary.BigEndian.PutUint32(data, i.Address)
+
+	ipNet := net.IPNet{
+		IP:   data,
+		Mask: net.CIDRMask(int(i.Length), 32),
+	}
+	return ipNet.String()
 }
