@@ -22,10 +22,14 @@ func NewIPv4Address(address uint32, length uint) IPv4Address {
 }
 
 // NewIPv4AddressFromBytes creates an address from the input IPv4 address bytes
-// - address must be 4 bytes
+// - address must be 4 or 16 bytes
 func NewIPv4AddressFromBytes(address []byte, length uint) IPv4Address {
+	byteCount := len(address)
+	if byteCount != 4 && byteCount != 16 {
+		return IPv4Address{Address: 0, Length: 0}
+	}
 	return IPv4Address{
-		Address: binary.BigEndian.Uint32(address),
+		Address: binary.BigEndian.Uint32(net.IP(address).To4()),
 		Length:  length,
 	}
 }
