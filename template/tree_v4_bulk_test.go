@@ -70,6 +70,7 @@ func TestBulkLoad(t *testing.T) {
 		fmt.Printf("done - loaded %d tags\n", recordsLoaded)
 		fmt.Printf("tree says loaded %d tags into %d nodes\n", tree.countTags(1), tree.countNodes(1))
 		assert.Equal(t, recordsLoaded, int(tree.countTags(1)))
+		assert.Equal(t, recordsLoaded, tree.CountTags())
 	}
 
 	evaluate := func() {
