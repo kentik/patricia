@@ -39,6 +39,16 @@ func (t *TreeV4) Clone() *TreeV4 {
 	return ret
 }
 
+// CountTags iterates through the tree, counting the number of tags
+// - note: unused nodes will have TagCount==0
+func (t *TreeV4) CountTags() int {
+	ret := 0
+	for _, node := range t.nodes {
+		ret += node.TagCount
+	}
+	return ret
+}
+
 // add a tag to the node at the input index, storing it in the first position if 'replaceFirst' is true
 // - if matchFunc is non-nil, will enforce uniqueness at this node
 // - returns whether the tag count was increased
@@ -688,6 +698,7 @@ func (t *TreeV4) FindDeepestTags(address patricia.IPv4Address) (bool, []int64, e
 	}
 }
 
+// note: this is only used for unit testing
 func (t *TreeV4) countNodes(nodeIndex uint) int {
 	nodeCount := 1
 
@@ -701,6 +712,7 @@ func (t *TreeV4) countNodes(nodeIndex uint) int {
 	return nodeCount
 }
 
+// note: this is only used for unit testing
 func (t *TreeV4) countTags(nodeIndex uint) int {
 	node := &t.nodes[nodeIndex]
 
