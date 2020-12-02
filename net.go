@@ -35,11 +35,8 @@ func ParseIPFromString(address string) (*IPv4Address, *IPv6Address, error) {
 	}
 	_, ipNet, err := net.ParseCIDR(v4AddrStr)
 	if err == nil {
-		if v4Addr := ipNet.IP.To4(); v4Addr != nil { // nil error here
-			if cidr == -1 {
-				cidr = 32
-			}
-
+		cidr, mask := ipNet.Mask.Size()
+		if v4Addr := ipNet.IP.To4(); v4Addr != nil && mask == 32 { // nil error here
 			ret := NewIPv4AddressFromBytes(v4Addr, uint(cidr))
 			return &ret, nil, nil
 		}
@@ -53,10 +50,8 @@ func ParseIPFromString(address string) (*IPv4Address, *IPv6Address, error) {
 	}
 	_, ipNet, err = net.ParseCIDR(v6AddrStr)
 	if err == nil {
-		if v6Addr := ipNet.IP.To16(); v6Addr != nil {
-			if cidr == -1 {
-				cidr = 128
-			}
+		cidr, mask := ipNet.Mask.Size()
+		if v6Addr := ipNet.IP.To16(); v6Addr != nil && mask == 128 {
 			ret := NewIPv6Address(v6Addr, uint(cidr))
 			return nil, &ret, nil
 		}
