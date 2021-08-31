@@ -23,7 +23,9 @@ func (t *TreeV4) newNode(address patricia.IPv4Address, prefixLength uint) uint {
 }
 
 func (t *TreeV4) print() {
+	buf := make([]int32, 0)
 	for i := range t.nodes {
-		fmt.Printf("%d: \tleft: %d, right: %d, prefix: %032b (%d), tags: (%d): %v\n", i, int(t.nodes[i].Left), int(t.nodes[i].Right), int(t.nodes[i].prefix), int(t.nodes[i].prefixLength), t.nodes[i].TagCount, t.tagsForNode(uint(i)))
+		buf = buf[:0]
+		fmt.Printf("%d: \tleft: %d, right: %d, prefix: %032b (%d), tags: (%d): %v\n", i, int(t.nodes[i].Left), int(t.nodes[i].Right), int(t.nodes[i].prefix), int(t.nodes[i].prefixLength), t.nodes[i].TagCount, t.tagsForNode(buf, uint(i)))
 	}
 }
