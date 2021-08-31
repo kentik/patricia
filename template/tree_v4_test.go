@@ -282,6 +282,123 @@ func TestTree2(t *testing.T) {
 	assert.Equal(t, "root_node", tag)
 }
 
+// TestFindDeepestTags tests self-allocating FindDeepestTags
+func TestFindDeepestTags(t *testing.T) {
+	assert := assert.New(t)
+
+	tags := make([]GeneratedType, 0)
+	found := false
+
+	tree := NewTreeV4()
+	// insert a bunch of tags
+	v4, _, err := patricia.ParseIPFromString("1.2.3.0/24")
+	assert.NoError(err)
+	assert.NotNil(v4)
+	tree.Add(*v4, "foo", nil)
+	tree.Add(*v4, "bar", nil)
+
+	v4, _, err = patricia.ParseIPFromString("188.212.216.242")
+	assert.NoError(err)
+	assert.NotNil(v4)
+	tree.Add(*v4, "a", nil)
+
+	v4, _, err = patricia.ParseIPFromString("171.233.143.228")
+	assert.NoError(err)
+	assert.NotNil(v4)
+	tree.Add(*v4, "b", nil)
+
+	v4, _, err = patricia.ParseIPFromString("186.244.183.12")
+	assert.NoError(err)
+	assert.NotNil(v4)
+	tree.Add(*v4, "c", nil)
+
+	v4, _, err = patricia.ParseIPFromString("171.233.143.222")
+	assert.NoError(err)
+	assert.NotNil(v4)
+	tree.Add(*v4, "d", nil)
+
+	v4, _, err = patricia.ParseIPFromString("190.207.189.24")
+	assert.NoError(err)
+	assert.NotNil(v4)
+	tree.Add(*v4, "e", nil)
+
+	v4, _, err = patricia.ParseIPFromString("188.212.216.240")
+	assert.NoError(err)
+	assert.NotNil(v4)
+	tree.Add(*v4, "f", nil)
+
+	v4, _, err = patricia.ParseIPFromString("185.76.10.148")
+	assert.NoError(err)
+	assert.NotNil(v4)
+	tree.Add(*v4, "g", nil)
+
+	v4, _, err = patricia.ParseIPFromString("14.208.248.50")
+	assert.NoError(err)
+	assert.NotNil(v4)
+	tree.Add(*v4, "h", nil)
+
+	v4, _, err = patricia.ParseIPFromString("59.60.75.52")
+	assert.NoError(err)
+	assert.NotNil(v4)
+	tree.Add(*v4, "i", nil)
+
+	v4, _, err = patricia.ParseIPFromString("185.76.10.146")
+	assert.NoError(err)
+	assert.NotNil(v4)
+	tree.Add(*v4, "j", nil)
+	tree.Add(*v4, "k", nil)
+
+	// now test
+	v4, _, _ = patricia.ParseIPFromString("185.76.10.146")
+	found, tags = tree.FindDeepestTags(*v4)
+	assert.True(found)
+	assert.Equal("j", tags[0])
+	assert.Equal("k", tags[1])
+	assert.Equal(2, len(tags))
+
+	// test searching for addresses with no leaf nodes
+	v4, _, _ = patricia.ParseIPFromString("1.2.3.4")
+	found, tags = tree.FindDeepestTags(*v4)
+	assert.True(found)
+	assert.Equal("foo", tags[0])
+	assert.Equal("bar", tags[1])
+	assert.Equal(2, len(tags))
+
+	v4, _, _ = patricia.ParseIPFromString("1.2.3.5")
+	found, tags = tree.FindDeepestTags(*v4)
+	assert.True(found)
+	assert.Equal("foo", tags[0])
+	assert.Equal("bar", tags[1])
+	assert.Equal(2, len(tags))
+
+	// test searching for an address that has nothing
+	v4, _, _ = patricia.ParseIPFromString("9.9.9.9")
+	found, tags = tree.FindDeepestTags(*v4)
+	assert.False(found)
+	assert.NotNil(tags)
+	assert.Equal(0, len(tags))
+
+	// test searching for an empty address
+	v4, _, _ = patricia.ParseIPFromString("9.9.9.9/0")
+	found, tags = tree.FindDeepestTags(*v4)
+	assert.False(found)
+	assert.NotNil(tags)
+	assert.Equal(0, len(tags))
+
+	// add a root node tag and try again
+	v4, _, err = patricia.ParseIPFromString("1.1.1.1/0")
+	assert.NoError(err)
+	assert.NotNil(v4)
+	tree.Add(*v4, "root_node", nil)
+
+	v4, _, _ = patricia.ParseIPFromString("9.9.9.9/0")
+	found, tags = tree.FindDeepestTags(*v4)
+	assert.True(found)
+	assert.NotNil(tags)
+	assert.Equal(1, len(tags))
+	assert.Equal("root_node", tags[0])
+}
+
 // test that the find functions don't destroy an address - too brittle and confusing for caller for what gains?
 func TestAddressReusable(t *testing.T) {
 	tags := make([]GeneratedType, 0)
@@ -377,6 +494,32 @@ func TestSimpleTree1Append(t *testing.T) {
 	assert.Equal(t, "tagC", tags[2])
 }
 
+// TestSimpleTree1Append tests the self-allocating FindTags
+func TestSimpleTree1FindTags(t *testing.T) {
+	tree := NewTreeV4()
+
+	ipv4a := ipv4FromBytes([]byte{98, 139, 183, 24}, 32)
+	ipv4b := ipv4FromBytes([]byte{198, 186, 190, 179}, 32)
+	ipv4c := ipv4FromBytes([]byte{151, 101, 124, 84}, 32)
+
+	tree.Add(ipv4a, "tagA", nil)
+	tree.Add(ipv4b, "tagB", nil)
+	tree.Add(ipv4c, "tagC", nil)
+
+	tags := make([]GeneratedType, 0)
+	tags = tree.FindTags(ipv4FromBytes([]byte{98, 139, 183, 24}, 32))
+	assert.Equal(t, 1, len(tags))
+	assert.Equal(t, "tagA", tags[0])
+
+	tags = tree.FindTags(ipv4FromBytes([]byte{198, 186, 190, 179}, 32))
+	assert.Equal(t, 1, len(tags))
+	assert.Equal(t, "tagB", tags[0])
+
+	tags = tree.FindTags(ipv4FromBytes([]byte{151, 101, 124, 84}, 32))
+	assert.Equal(t, 1, len(tags))
+	assert.Equal(t, "tagC", tags[0])
+}
+
 // TestSimpleTree1FilterAppend tests that FindTagsWithFilterAppend appends
 func TestSimpleTree1FilterAppend(t *testing.T) {
 	assert := assert.New(t)
@@ -438,6 +581,63 @@ func TestSimpleTree1FilterAppend(t *testing.T) {
 	assert.Equal("tagB", tags[1])
 	assert.Equal("tagC", tags[2])
 	assert.Equal("tagC", tags[2])
+}
+
+// TestSimpleTree1Filter tests that FindTagsWithFilter
+func TestSimpleTree1Filter(t *testing.T) {
+	assert := assert.New(t)
+
+	include := true
+	filterFunc := func(val GeneratedType) bool {
+		return include
+	}
+
+	tree := NewTreeV4()
+
+	ipv4a := ipv4FromBytes([]byte{98, 139, 183, 24}, 32)
+	ipv4b := ipv4FromBytes([]byte{198, 186, 190, 179}, 32)
+	ipv4c := ipv4FromBytes([]byte{151, 101, 124, 84}, 32)
+
+	tree.Add(ipv4a, "tagA", nil)
+	tree.Add(ipv4b, "tagB", nil)
+	tree.Add(ipv4c, "tagC", nil)
+
+	include = false
+	tags := make([]GeneratedType, 0)
+	tags = tree.FindTagsWithFilter(ipv4FromBytes([]byte{98, 139, 183, 24}, 32), filterFunc)
+	assert.Equal(0, len(tags))
+
+	include = true
+	tags = tree.FindTagsWithFilter(ipv4FromBytes([]byte{98, 139, 183, 24}, 32), filterFunc)
+	assert.Equal(1, len(tags))
+	assert.Equal("tagA", tags[0])
+
+	include = false
+	tags = tree.FindTagsWithFilter(ipv4FromBytes([]byte{198, 186, 190, 179}, 32), filterFunc)
+	assert.Equal(0, len(tags))
+
+	include = true
+	tags = tree.FindTagsWithFilter(ipv4FromBytes([]byte{198, 186, 190, 179}, 32), filterFunc)
+	assert.Equal(1, len(tags))
+	assert.Equal("tagB", tags[0])
+
+	include = false
+	tags = tree.FindTagsWithFilter(ipv4FromBytes([]byte{151, 101, 124, 84}, 32), filterFunc)
+	assert.Equal(0, len(tags))
+
+	include = true
+	tags = tree.FindTagsWithFilter(ipv4FromBytes([]byte{151, 101, 124, 84}, 32), filterFunc)
+	assert.Equal(1, len(tags))
+	assert.Equal("tagC", tags[0])
+
+	include = false
+	tags = tree.FindTagsWithFilter(ipv4FromBytes([]byte{151, 101, 124, 84}, 32), filterFunc)
+	assert.Equal(0, len(tags))
+
+	include = true
+	tags = tree.FindTagsWithFilter(ipv4FromBytes([]byte{151, 101, 124, 84}, 32), filterFunc)
+	assert.Equal(1, len(tags))
+	assert.Equal("tagC", tags[0])
 }
 
 // Test having a couple of inner nodes
