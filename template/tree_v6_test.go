@@ -39,7 +39,7 @@ func BenchmarkFindTagsV6(b *testing.B) {
 	address := ipv6FromString("2001:db7:0:0:0:0:2:1/128", 32)
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		tree.FindTags(buf, address)
+		tree.FindTagsAppend(buf, address)
 		buf = buf[:0]
 	}
 }
@@ -67,13 +67,15 @@ func TestSimpleTreeV6(t *testing.T) {
 		assert.Equal(t, 1, count)
 	}
 
-	tags = tree.FindTags(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
 	if assert.Equal(t, 128, len(tags)) {
 		assert.Equal(t, "Tag-128", tags[127].(string))
 		assert.Equal(t, "Tag-32", tags[31].(string))
 	}
 
-	tags = tree.FindTags(tags, ipv6FromString("4001:db8:0:0:0:0:2:1/128", 128))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("4001:db8:0:0:0:0:2:1/128", 128))
 	if assert.Equal(t, 1, len(tags)) {
 		assert.Equal(t, "Tag-1", tags[0])
 	}
@@ -122,7 +124,8 @@ func TestSimpleTreeV6(t *testing.T) {
 	assert.True(t, countIncreased)
 	assert.Equal(t, 2, count)
 
-	tags = tree.FindTags(tags, patricia.IPv6Address{})
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, patricia.IPv6Address{})
 	if assert.Equal(t, 2, len(tags)) {
 		assert.Equal(t, "root1", tags[0].(string))
 		assert.Equal(t, "root2", tags[1].(string))
@@ -144,23 +147,29 @@ func TestTree1V6(t *testing.T) {
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128), tagC, nil)
 
 	// three tags in a hierarchy - ask for all but the most specific
-	tags = tree.FindTags(tags, ipv6FromString("2001:db8:0:0:0:0:2:0/128", 128))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:0/128", 128))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagZ}))
-	tags = tree.FindTags(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 127))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 127))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagZ}))
 
 	// three tags in a hierarchy - ask for an exact match, receive all 3
-	tags = tree.FindTags(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC, tagZ}))
 
 	// three tags in a hierarchy - get just the first
-	tags = tree.FindTags(tags, ipv6FromString("2001:db8:0:0:0:1:2:1/128", 128))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("2001:db8:0:0:0:1:2:1/128", 128))
 	assert.True(t, tagArraysEqual(tags, []string{tagB, tagZ}))
 
 	// three tags in hierarchy - get none
-	tags = tree.FindTags(tags, ipv6FromString("8001:db8:0:0:0:0:2:1/128", 128))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("8001:db8:0:0:0:0:2:1/128", 128))
 	assert.True(t, tagArraysEqual(tags, []string{tagZ}))
-	tags = tree.FindTags(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 66))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 66))
 	assert.True(t, tagArraysEqual(tags, []string{tagZ}))
 }
 
@@ -183,23 +192,29 @@ func TestTree1V6WithFilter(t *testing.T) {
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128), tagC, nil)
 
 	// three tags in a hierarchy - ask for all but the most specific
-	tags = tree.FindTagsWithFilter(tags, ipv6FromString("2001:db8:0:0:0:0:2:0/128", 128), filterFunc)
+	tags = tags[:0]
+	tags = tree.FindTagsWithFilterAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:0/128", 128), filterFunc)
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB}))
-	tags = tree.FindTagsWithFilter(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 127), filterFunc)
+	tags = tags[:0]
+	tags = tree.FindTagsWithFilterAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 127), filterFunc)
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB}))
 
 	// three tags in a hierarchy - ask for an exact match, receive all 3
-	tags = tree.FindTagsWithFilter(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128), filterFunc)
+	tags = tags[:0]
+	tags = tree.FindTagsWithFilterAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128), filterFunc)
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB}))
 
 	// three tags in a hierarchy - get just the first
-	tags = tree.FindTagsWithFilter(tags, ipv6FromString("2001:db8:0:0:0:1:2:1/128", 128), filterFunc)
+	tags = tags[:0]
+	tags = tree.FindTagsWithFilterAppend(tags, ipv6FromString("2001:db8:0:0:0:1:2:1/128", 128), filterFunc)
 	assert.True(t, tagArraysEqual(tags, []string{tagB}))
 
 	// three tags in hierarchy - get none
-	tags = tree.FindTagsWithFilter(tags, ipv6FromString("8001:db8:0:0:0:0:2:1/128", 128), filterFunc)
+	tags = tags[:0]
+	tags = tree.FindTagsWithFilterAppend(tags, ipv6FromString("8001:db8:0:0:0:0:2:1/128", 128), filterFunc)
 	assert.Zero(t, len(tags))
-	tags = tree.FindTagsWithFilter(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 66), filterFunc)
+	tags = tags[:0]
+	tags = tree.FindTagsWithFilterAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 66), filterFunc)
 	assert.Zero(t, len(tags))
 }
 
@@ -220,26 +235,31 @@ func TestRootNodeV6(t *testing.T) {
 	tree.Add(patricia.IPv6Address{}, tagB, nil)
 
 	// query the root node with no address
-	tags = tree.FindTags(tags, patricia.IPv6Address{})
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, patricia.IPv6Address{})
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB}))
 
 	// query a node that doesn't exist
-	tags = tree.FindTags(tags, ipv6FromString("FFFF:db8:0:0:0:0:2:1/128", 128))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("FFFF:db8:0:0:0:0:2:1/128", 128))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB}))
 
 	// create a new /65 node with C & D
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 65), tagC, nil)
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 65), tagD, nil)
-	tags = tree.FindTags(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC, tagD}))
 
 	// create a node under the /65 node
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128), tagZ, nil)
-	tags = tree.FindTags(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC, tagD, tagZ}))
 
 	// check the /77 and make sure we still get the /65 and root
-	tags = tree.FindTags(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 77))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 77))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC, tagD}))
 }
 
@@ -250,6 +270,7 @@ func TestDelete1V6(t *testing.T) {
 		return tagData.(string) == val.(string)
 	}
 
+	buf := make([]GeneratedType, 0, 10)
 	tagA := "tagA"
 	tagB := "tagB"
 	tagC := "tagC"
@@ -267,73 +288,68 @@ func TestDelete1V6(t *testing.T) {
 	assert.Equal(t, 4, tree.countNodes(1))
 
 	// three tags in a hierarchy - ask for an exact match, receive all 3 and the root
-	tags = tree.FindTags(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
-	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC, tagZ}))
 	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
+	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC, tagZ}))
 
 	// 1. delete a tag that doesn't exist
 	count := 0
-	count = tree.Delete(tags, ipv6FromString("F001:db8:0:0:0:0:2:1/128", 128), matchFunc, "bad tag")
+	count = tree.DeleteWithBuffer(buf, ipv6FromString("F001:db8:0:0:0:0:2:1/128", 128), matchFunc, "bad tag")
 	assert.Equal(t, 0, count)
 	assert.Equal(t, 4, tree.countTags(1))
 	assert.Equal(t, 4, tree.countNodes(1))
-	assert.Equal(t, 0, len(tags))
 
 	// 2. delete a tag on an address that exists, but doesn't have the tag
-	count = tree.Delete(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 67), matchFunc, "bad tag")
+	count = tree.DeleteWithBuffer(buf, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 67), matchFunc, "bad tag")
 	assert.Equal(t, 0, count)
-	assert.Equal(t, 0, len(tags))
 
 	// verify
-	tags = tree.FindTags(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC, tagZ}))
 	assert.Equal(t, 4, tree.countNodes(1))
 	assert.Equal(t, 4, tree.countTags(1))
-	tags = tags[:0]
 
 	// 3. delete the default/root tag
-	count = tree.Delete(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 0), matchFunc, "tagZ")
+	count = tree.DeleteWithBuffer(buf, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 0), matchFunc, "tagZ")
 	assert.Equal(t, 1, count)
 	assert.Equal(t, 4, tree.countNodes(1)) // doesn't delete anything
 	assert.Equal(t, 3, tree.countTags(1))
-	assert.Equal(t, 0, len(tags))
 
 	// three tags in a hierarchy - ask for an exact match, receive all 3, not the root, which we deleted
-	tags = tree.FindTags(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
-	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC}))
 	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
+	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC}))
 
 	// 4. delete tagA
-	count = tree.Delete(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 67), matchFunc, "tagA")
+	count = tree.DeleteWithBuffer(buf, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 67), matchFunc, "tagA")
 	assert.Equal(t, 1, count)
-	assert.Equal(t, 0, len(tags))
 
 	// verify
-	tags = tree.FindTags(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
 	assert.True(t, tagArraysEqual(tags, []string{tagB, tagC}))
 	assert.Equal(t, 3, tree.countNodes(1))
 	assert.Equal(t, 2, tree.countTags(1))
-	tags = tags[:0]
 
 	// 5. delete tag B
-	count = tree.Delete(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 2), matchFunc, "tagB")
+	count = tree.DeleteWithBuffer(buf, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 2), matchFunc, "tagB")
 	assert.Equal(t, 1, count)
-	assert.Equal(t, 0, len(tags))
 
 	// verify
-	tags = tree.FindTags(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
 	assert.True(t, tagArraysEqual(tags, []string{tagC}))
 	assert.Equal(t, 2, tree.countNodes(1))
 	assert.Equal(t, 1, tree.countTags(1))
-	tags = tags[:0]
 
 	// 6. delete tag C
-	count = tree.Delete(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128), matchFunc, "tagC")
+	count = tree.DeleteWithBuffer(buf, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128), matchFunc, "tagC")
 	assert.Equal(t, 1, count)
-	assert.Equal(t, 0, len(tags))
 
 	// verify
-	tags = tree.FindTags(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
 	assert.True(t, tagArraysEqual(tags, []string{}))
 	assert.Equal(t, 1, tree.countNodes(1))
 	assert.Equal(t, 0, tree.countTags(1))

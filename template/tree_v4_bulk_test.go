@@ -84,7 +84,7 @@ func TestBulkLoad(t *testing.T) {
 				panic(fmt.Sprintf("search: Could not parse IP '%s': %s", address, err))
 			}
 			if v4 != nil {
-				foundTags := tree.FindTags(buf, *v4)
+				foundTags := tree.FindTagsAppend(buf, *v4)
 				if assert.True(t, len(foundTags) > 0, "Couldn't find tags for "+address) {
 					assert.True(t, tag == foundTags[len(foundTags)-1])
 				}
@@ -95,7 +95,7 @@ func TestBulkLoad(t *testing.T) {
 
 				// delete the tags now
 				//fmt.Printf("Deleting %s: %s\n", address, tag)
-				deleteCount := tree.Delete(buf, *v4, func(a GeneratedType, b GeneratedType) bool { return a == b }, tag)
+				deleteCount := tree.DeleteWithBuffer(buf, *v4, func(a GeneratedType, b GeneratedType) bool { return a == b }, tag)
 				assert.Equal(t, 1, deleteCount, "Tried deleting tag")
 				//tree.print()
 			} else if v6 == nil {

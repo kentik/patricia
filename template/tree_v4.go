@@ -319,8 +319,14 @@ func (t *TreeV4) add(address patricia.IPv4Address, tag GeneratedType, matchFunc 
 }
 
 // Delete a tag from the tree if it matches matchVal, as determined by matchFunc. Returns how many tags are removed
+// - use DeleteWithBuffer if you can reuse slices, to cut down on allocations
+func (t *TreeV4) Delete(address patricia.IPv4Address, matchFunc MatchesFunc, matchVal GeneratedType) int {
+	return t.DeleteWithBuffer(make([]GeneratedType, 0), address, matchFunc, matchVal)
+}
+
+// DeleteWithBuffer a tag from the tree if it matches matchVal, as determined by matchFunc. Returns how many tags are removed
 // - uses input slice to reduce allocations
-func (t *TreeV4) Delete(buf []GeneratedType, address patricia.IPv4Address, matchFunc MatchesFunc, matchVal GeneratedType) int {
+func (t *TreeV4) DeleteWithBuffer(buf []GeneratedType, address patricia.IPv4Address, matchFunc MatchesFunc, matchVal GeneratedType) int {
 	// traverse the tree, finding the node and its parent
 	root := &t.nodes[1]
 	var parentIndex uint
@@ -464,16 +470,26 @@ func (t *TreeV4) Delete(buf []GeneratedType, address patricia.IPv4Address, match
 }
 
 // FindTagsWithFilter finds all matching tags that passes the filter function
-// - input slice is used to reduce allocations - will be reset before it's used
-func (t *TreeV4) FindTagsWithFilter(ret []GeneratedType, address patricia.IPv4Address, filterFunc FilterFunc) []GeneratedType {
-	ret = t.FindTags(ret, address)
+// - use FindTagsWithFilterAppend if you can reuse slices, to cut down on allocations
+func (t *TreeV4) FindTagsWithFilter(address patricia.IPv4Address, filterFunc FilterFunc) []GeneratedType {
+	ret := make([]GeneratedType, 0)
+	return t.FindTagsWithFilterAppend(ret, address, filterFunc)
+}
 
-	if len(ret) == 0 || filterFunc == nil {
+// FindTagsWithFilterAppend finds all matching tags that passes the filter function
+// - results are appended to the input slice
+func (t *TreeV4) FindTagsWithFilterAppend(ret []GeneratedType, address patricia.IPv4Address, filterFunc FilterFunc) []GeneratedType {
+	retPos := len(ret)
+	ret = t.FindTagsAppend(ret, address)
+
+	if len(ret) == retPos || filterFunc == nil {
 		return ret
 	}
 
-	retPos := 0
-	for _, val := range ret {
+	// filter in place
+	length := len(ret)
+	for i := retPos; i < length; i++ {
+		val := ret[i]
 		if filterFunc(val) {
 			ret[retPos] = val
 			retPos++
@@ -482,11 +498,15 @@ func (t *TreeV4) FindTagsWithFilter(ret []GeneratedType, address patricia.IPv4Ad
 	return ret[:retPos]
 }
 
-// FindTags finds all matching tags for given address and appends them to ret
-// - may return nil if none found
-func (t *TreeV4) FindTags(ret []GeneratedType, address patricia.IPv4Address) []GeneratedType {
-	ret = ret[:0]
+// FindTags finds all matching tags for given address
+// - use FindTagsAppend if you can reuse slices, to cut down on allocations
+func (t *TreeV4) FindTags(address patricia.IPv4Address) []GeneratedType {
+	ret := make([]GeneratedType, 0)
+	return t.FindTagsAppend(ret, address)
+}
 
+// FindTagsAppend finds all matching tags for given address and appends them to ret
+func (t *TreeV4) FindTagsAppend(ret []GeneratedType, address patricia.IPv4Address) []GeneratedType {
 	var matchCount uint
 	root := &t.nodes[1]
 
@@ -600,10 +620,15 @@ func (t *TreeV4) FindDeepestTag(address patricia.IPv4Address) (bool, GeneratedTy
 }
 
 // FindDeepestTags finds all tags at the deepest level in the tree, representing the closest match
-// - may return nil if nothing found
-func (t *TreeV4) FindDeepestTags(ret []GeneratedType, address patricia.IPv4Address) (bool, []GeneratedType) {
-	ret = ret[:0]
+// - use FindDeepestTagsAppend if you can reuse slices, to cut down on allocations
+func (t *TreeV4) FindDeepestTags(address patricia.IPv4Address) (bool, []GeneratedType) {
+	ret := make([]GeneratedType, 0)
+	return t.FindDeepestTagsAppend(ret, address)
+}
 
+// FindDeepestTagsAppend finds all tags at the deepest level in the tree, representing the closest match
+// - appends results to the input slice
+func (t *TreeV4) FindDeepestTagsAppend(ret []GeneratedType, address patricia.IPv4Address) (bool, []GeneratedType) {
 	root := &t.nodes[1]
 	var found bool
 	var retTagIndex uint

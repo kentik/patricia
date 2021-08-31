@@ -17,7 +17,7 @@ func ipv4FromBytes(bytes []byte, length int) patricia.IPv4Address {
 	}
 }
 
-func BenchmarkFindTags(b *testing.B) {
+func BenchmarkFindTagsAppend(b *testing.B) {
 	tagA := "tagA"
 	tagB := "tagB"
 	tagC := "tagC"
@@ -34,7 +34,8 @@ func BenchmarkFindTags(b *testing.B) {
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		address := patricia.NewIPv4Address(uint32(2156823809), 32)
-		buf = tree.FindTags(buf, address)
+		buf = buf[:0]
+		buf = tree.FindTagsAppend(buf, address)
 	}
 }
 
@@ -194,21 +195,24 @@ func TestTree2(t *testing.T) {
 	assert.True(t, found)
 	assert.Equal(t, "j", tag)
 
+	tags = tags[:0]
 	v4, _, _ = patricia.ParseIPFromString("185.76.10.146")
-	found, tags = tree.FindDeepestTags(tags, *v4)
+	found, tags = tree.FindDeepestTagsAppend(tags, *v4)
 	assert.True(t, found)
 	assert.Equal(t, "j", tags[0])
 	assert.Equal(t, "k", tags[1])
 
 	// test searching for addresses with no leaf nodes
+	tags = tags[:0]
 	v4, _, _ = patricia.ParseIPFromString("1.2.3.4")
-	found, tags = tree.FindDeepestTags(tags, *v4)
+	found, tags = tree.FindDeepestTagsAppend(tags, *v4)
 	assert.True(t, found)
 	assert.Equal(t, "foo", tags[0])
 	assert.Equal(t, "bar", tags[1])
 
+	tags = tags[:0]
 	v4, _, _ = patricia.ParseIPFromString("1.2.3.5")
-	found, tags = tree.FindDeepestTags(tags, *v4)
+	found, tags = tree.FindDeepestTagsAppend(tags, *v4)
 	assert.True(t, found)
 	assert.Equal(t, "foo", tags[0])
 	assert.Equal(t, "bar", tags[1])
@@ -219,15 +223,17 @@ func TestTree2(t *testing.T) {
 	assert.Equal(t, "foo", tag)
 
 	// test searching for an address that has nothing
+	tags = tags[:0]
 	v4, _, _ = patricia.ParseIPFromString("9.9.9.9")
-	found, tags = tree.FindDeepestTags(tags, *v4)
+	found, tags = tree.FindDeepestTagsAppend(tags, *v4)
 	assert.False(t, found)
 	assert.NotNil(t, tags)
 	assert.Equal(t, 0, len(tags))
 
 	// test searching for an empty address
+	tags = tags[:0]
 	v4, _, _ = patricia.ParseIPFromString("9.9.9.9/0")
-	found, tags = tree.FindDeepestTags(tags, *v4)
+	found, tags = tree.FindDeepestTagsAppend(tags, *v4)
 	assert.False(t, found)
 	assert.NotNil(t, tags)
 	assert.Equal(t, 0, len(tags))
@@ -239,7 +245,8 @@ func TestTree2(t *testing.T) {
 	tree.Add(*v4, "root_node", nil)
 
 	v4, _, _ = patricia.ParseIPFromString("9.9.9.9/0")
-	found, tags = tree.FindDeepestTags(tags, *v4)
+	tags = tags[:0]
+	found, tags = tree.FindDeepestTagsAppend(tags, *v4)
 	assert.True(t, found)
 	assert.NotNil(t, tags)
 	assert.Equal(t, 1, len(tags))
@@ -279,13 +286,15 @@ func TestAddressReusable(t *testing.T) {
 	assert.Equal(t, "Hello", tag)
 
 	// search again with same address
-	tags = tree.FindTags(tags, *v4)
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, *v4)
 	if assert.Equal(t, 1, len(tags)) {
 		assert.Equal(t, "Hello", tags[0])
 	}
 
 	// search again with same address
-	tags = tree.FindTags(tags, *v4)
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, *v4)
 	if assert.Equal(t, 1, len(tags)) {
 		assert.Equal(t, "Hello", tags[0])
 	}
@@ -345,13 +354,13 @@ func TestSimpleTree2(t *testing.T) {
 	matchFunc := func(a GeneratedType, b GeneratedType) bool {
 		return a == b
 	}
-	deleteCount := tree.Delete(buf, *ipA, matchFunc, "A")
+	deleteCount := tree.DeleteWithBuffer(buf, *ipA, matchFunc, "A")
 	assert.Equal(t, 1, deleteCount)
-	deleteCount = tree.Delete(buf, *ipB, matchFunc, "B")
+	deleteCount = tree.DeleteWithBuffer(buf, *ipB, matchFunc, "B")
 	assert.Equal(t, 1, deleteCount)
-	deleteCount = tree.Delete(buf, *ipC, matchFunc, "C")
+	deleteCount = tree.DeleteWithBuffer(buf, *ipC, matchFunc, "C")
 	assert.Equal(t, 1, deleteCount)
-	deleteCount = tree.Delete(buf, *ipD, matchFunc, "D")
+	deleteCount = tree.DeleteWithBuffer(buf, *ipD, matchFunc, "D")
 	assert.Equal(t, 1, deleteCount)
 
 	// should have zero logical nodes except for root
@@ -369,13 +378,15 @@ func TestSimpleTree(t *testing.T) {
 		assert.Equal(t, 1, count)
 	}
 
-	tags = tree.FindTags(tags, ipv4FromBytes([]byte{127, 0, 0, 1}, 32))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{127, 0, 0, 1}, 32))
 	if assert.Equal(t, 32, len(tags)) {
 		assert.Equal(t, "Tag-32", tags[31].(string))
 		assert.Equal(t, "Tag-31", tags[30].(string))
 	}
 
-	tags = tree.FindTags(tags, ipv4FromBytes([]byte{63, 3, 0, 1}, 32))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{63, 3, 0, 1}, 32))
 	if assert.Equal(t, 1, len(tags)) {
 		assert.Equal(t, "Tag-1", tags[0].(string))
 	}
@@ -414,7 +425,8 @@ func TestSimpleTree(t *testing.T) {
 	assert.True(t, countIncreased)
 	assert.Equal(t, 2, count)
 
-	tags = tree.FindTags(tags, patricia.IPv4Address{})
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, patricia.IPv4Address{})
 	if assert.Equal(t, 2, len(tags)) {
 		assert.Equal(t, "root1", tags[0].(string))
 		assert.Equal(t, "root2", tags[1].(string))
@@ -442,7 +454,7 @@ func tagArraysEqual(a []GeneratedType, b []string) bool {
 	return true
 }
 
-func TestTree1FindTags(t *testing.T) {
+func TestTree1FindTagsAppend(t *testing.T) {
 	tags := make([]GeneratedType, 0)
 
 	tagA := "tagA"
@@ -457,23 +469,27 @@ func TestTree1FindTags(t *testing.T) {
 	tree.Add(ipv4FromBytes([]byte{128, 3, 6, 240}, 32), tagC, nil)
 
 	// three tags in a hierarchy - ask for all but the most specific
-	tags = tree.FindTags(tags, ipv4FromBytes([]byte{128, 142, 133, 1}, 32))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{128, 142, 133, 1}, 32))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagZ}))
 
 	// three tags in a hierarchy - ask for an exact match, receive all 3
-	tags = tree.FindTags(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC, tagZ}))
 
 	// three tags in a hierarchy - get just the first
-	tags = tree.FindTags(tags, ipv4FromBytes([]byte{162, 1, 0, 5}, 30))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{162, 1, 0, 5}, 30))
 	assert.True(t, tagArraysEqual(tags, []string{tagB, tagZ}))
 
 	// three tags in hierarchy - get none
-	tags = tree.FindTags(tags, ipv4FromBytes([]byte{1, 0, 0, 0}, 1))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{1, 0, 0, 0}, 1))
 	assert.True(t, tagArraysEqual(tags, []string{tagZ}))
 }
 
-func TestTree1FindTagsWithFilter(t *testing.T) {
+func TestTree1FindTagsWithFilterAppend(t *testing.T) {
 	tags := make([]GeneratedType, 0)
 
 	tagA := "tagA"
@@ -492,19 +508,23 @@ func TestTree1FindTagsWithFilter(t *testing.T) {
 	tree.Add(ipv4FromBytes([]byte{128, 3, 6, 240}, 32), tagC, nil)
 
 	// three tags in a hierarchy - ask for all but the most specific
-	tags = tree.FindTagsWithFilter(tags, ipv4FromBytes([]byte{128, 142, 133, 1}, 32), filterFunc)
+	tags = tags[:0]
+	tags = tree.FindTagsWithFilterAppend(tags, ipv4FromBytes([]byte{128, 142, 133, 1}, 32), filterFunc)
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB}))
 
 	// three tags in a hierarchy - ask for an exact match, receive all 3
-	tags = tree.FindTagsWithFilter(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32), filterFunc)
+	tags = tags[:0]
+	tags = tree.FindTagsWithFilterAppend(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32), filterFunc)
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB}))
 
 	// three tags in a hierarchy - get just the first
-	tags = tree.FindTagsWithFilter(tags, ipv4FromBytes([]byte{162, 1, 0, 5}, 30), filterFunc)
+	tags = tags[:0]
+	tags = tree.FindTagsWithFilterAppend(tags, ipv4FromBytes([]byte{162, 1, 0, 5}, 30), filterFunc)
 	assert.True(t, tagArraysEqual(tags, []string{tagB}))
 
 	// three tags in hierarchy - get none
-	tags = tree.FindTagsWithFilter(tags, ipv4FromBytes([]byte{1, 0, 0, 0}, 1), filterFunc)
+	tags = tags[:0]
+	tags = tree.FindTagsWithFilterAppend(tags, ipv4FromBytes([]byte{1, 0, 0, 0}, 1), filterFunc)
 	assert.Zero(t, len(tags))
 }
 
@@ -525,26 +545,31 @@ func TestRootNode(t *testing.T) {
 	tree.Add(patricia.IPv4Address{}, tagB, nil)
 
 	// query the root node with no address
-	tags = tree.FindTags(tags, patricia.IPv4Address{})
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, patricia.IPv4Address{})
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB}))
 
 	// query a node that doesn't exist
-	tags = tree.FindTags(tags, ipv4FromBytes([]byte{1, 2, 3, 4}, 32))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{1, 2, 3, 4}, 32))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB}))
 
 	// create a new /16 node with C & D
 	tree.Add(ipv4FromBytes([]byte{1, 2, 3, 4}, 16), tagC, nil)
 	tree.Add(ipv4FromBytes([]byte{1, 2, 3, 4}, 16), tagD, nil)
-	tags = tree.FindTags(tags, ipv4FromBytes([]byte{1, 2, 3, 4}, 16))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{1, 2, 3, 4}, 16))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC, tagD}))
 
 	// create a node under the /16 node
 	tree.Add(ipv4FromBytes([]byte{1, 2, 3, 4}, 32), tagZ, nil)
-	tags = tree.FindTags(tags, ipv4FromBytes([]byte{1, 2, 3, 4}, 32))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{1, 2, 3, 4}, 32))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC, tagD, tagZ}))
 
 	// check the /24 and make sure we still get the /16 and root
-	tags = tree.FindTags(tags, ipv4FromBytes([]byte{1, 2, 3, 4}, 24))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{1, 2, 3, 4}, 24))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC, tagD}))
 }
 
@@ -607,7 +632,7 @@ func TestSet(t *testing.T) {
 	assert.Equal(t, "tagD", tag)
 
 	// now delete the tag
-	delCount := tree.Delete(buf, address, func(a GeneratedType, b GeneratedType) bool { return true }, "")
+	delCount := tree.DeleteWithBuffer(buf, address, func(a GeneratedType, b GeneratedType) bool { return true }, "")
 	assert.Equal(t, 1, delCount)
 
 	// verify it's gone - should get the parent
@@ -659,43 +684,47 @@ func TestDelete1(t *testing.T) {
 	tags = tags[:0]
 
 	// three tags in a hierarchy - ask for an exact match, receive all 3 and the root
-	tags = tree.FindTags(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC, tagZ}))
 
 	// 1. delete a tag that doesn't exist
 	count := 0
-	count = tree.Delete(tags, ipv4FromBytes([]byte{9, 9, 9, 9}, 32), matchFunc, "bad tag")
+	count = tree.DeleteWithBuffer(tags, ipv4FromBytes([]byte{9, 9, 9, 9}, 32), matchFunc, "bad tag")
 	assert.Equal(t, 0, count)
 	assert.Equal(t, 4, tree.countNodes(1))
 	assert.Equal(t, 4, tree.countTags(1))
 
 	// 2. delete a tag on an address that exists, but doesn't have the tag
-	count = tree.Delete(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32), matchFunc, "bad tag")
+	count = tree.DeleteWithBuffer(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32), matchFunc, "bad tag")
 	assert.Equal(t, 0, count)
 
 	// verify
-	tags = tree.FindTags(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC, tagZ}))
 	assert.Equal(t, 4, tree.countNodes(1))
 	assert.Equal(t, 4, tree.countTags(1))
 
 	// 3. delete the default/root tag
-	count = tree.Delete(tags, ipv4FromBytes([]byte{0, 0, 0, 0}, 0), matchFunc, "tagZ")
+	count = tree.DeleteWithBuffer(tags, ipv4FromBytes([]byte{0, 0, 0, 0}, 0), matchFunc, "tagZ")
 	assert.Equal(t, 1, count)
 	assert.Equal(t, 4, tree.countNodes(1)) // doesn't delete anything
 	assert.Equal(t, 3, tree.countTags(1))
 	assert.Equal(t, 0, len(tree.availableIndexes))
 
 	// three tags in a hierarchy - ask for an exact match, receive all 3, not the root, which we deleted
-	tags = tree.FindTags(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
 	assert.True(t, tagArraysEqual(tags, []string{tagA, tagB, tagC}))
 
 	// 4. delete tagA
-	count = tree.Delete(tags, ipv4FromBytes([]byte{128, 0, 0, 0}, 7), matchFunc, "tagA")
+	count = tree.DeleteWithBuffer(tags, ipv4FromBytes([]byte{128, 0, 0, 0}, 7), matchFunc, "tagA")
 	assert.Equal(t, 1, count)
 
 	// verify
-	tags = tree.FindTags(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
 	assert.True(t, tagArraysEqual(tags, []string{tagB, tagC}))
 	assert.Equal(t, 3, tree.countNodes(1))
 	assert.Equal(t, 2, tree.countTags(1))
@@ -703,11 +732,12 @@ func TestDelete1(t *testing.T) {
 	assert.Equal(t, uint(2), tree.availableIndexes[0])
 
 	// 5. delete tag B
-	count = tree.Delete(tags, ipv4FromBytes([]byte{128, 0, 0, 0}, 2), matchFunc, "tagB")
+	count = tree.DeleteWithBuffer(tags, ipv4FromBytes([]byte{128, 0, 0, 0}, 2), matchFunc, "tagB")
 	assert.Equal(t, 1, count)
 
 	// verify
-	tags = tree.FindTags(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
 	assert.True(t, tagArraysEqual(tags, []string{tagC}))
 	assert.Equal(t, 2, tree.countNodes(1))
 	assert.Equal(t, 1, tree.countTags(1))
@@ -728,11 +758,12 @@ func TestDelete1(t *testing.T) {
 	assert.Equal(t, "tagE", tree.tagsForNode(tags, 3)[0])
 
 	// 6. delete tag C
-	count = tree.Delete(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32), matchFunc, "tagC")
+	count = tree.DeleteWithBuffer(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32), matchFunc, "tagC")
 	assert.Equal(t, 1, count)
 
 	// verify
-	tags = tree.FindTags(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
+	tags = tags[:0]
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32))
 	assert.True(t, tagArraysEqual(tags, []string{}))
 	assert.Equal(t, 2, tree.countNodes(1))
 	assert.Equal(t, 2, tree.countTags(1))
