@@ -34,7 +34,7 @@ func BenchmarkFindTags(b *testing.B) {
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		address := patricia.NewIPv4Address(uint32(2156823809), 32)
-		tree.FindTags(buf, address)
+		buf = tree.FindTags(buf, address)
 	}
 }
 
