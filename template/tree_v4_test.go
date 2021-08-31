@@ -683,6 +683,47 @@ func TestSimpleTree2(t *testing.T) {
 	assert.Equal(t, 1, tree.countNodes(1))
 }
 
+// Test having a couple of inner nodes - with self-allocating Delete method
+func TestSimpleTree2WithDelete(t *testing.T) {
+	ipA, _, _ := patricia.ParseIPFromString("203.143.220.0/23")
+	ipB, _, _ := patricia.ParseIPFromString("203.143.220.198/32")
+	ipC, _, _ := patricia.ParseIPFromString("203.143.0.0/16")
+	ipD, _, _ := patricia.ParseIPFromString("203.143.221.75/32")
+
+	// add the 4 addresses
+	tree := NewTreeV4()
+	tree.Add(*ipA, "A", nil)
+	tree.Add(*ipB, "B", nil)
+	tree.Add(*ipC, "C", nil)
+	tree.Add(*ipD, "D", nil)
+
+	// find the 4 addresses
+	found, _ := tree.FindDeepestTag(*ipA)
+	assert.True(t, found)
+	found, _ = tree.FindDeepestTag(*ipB)
+	assert.True(t, found)
+	found, _ = tree.FindDeepestTag(*ipC)
+	assert.True(t, found)
+	found, _ = tree.FindDeepestTag(*ipD)
+	assert.True(t, found)
+
+	// delete each one
+	matchFunc := func(a GeneratedType, b GeneratedType) bool {
+		return a == b
+	}
+	deleteCount := tree.Delete(*ipA, matchFunc, "A")
+	assert.Equal(t, 1, deleteCount)
+	deleteCount = tree.Delete(*ipB, matchFunc, "B")
+	assert.Equal(t, 1, deleteCount)
+	deleteCount = tree.Delete(*ipC, matchFunc, "C")
+	assert.Equal(t, 1, deleteCount)
+	deleteCount = tree.Delete(*ipD, matchFunc, "D")
+	assert.Equal(t, 1, deleteCount)
+
+	// should have zero logical nodes except for root
+	assert.Equal(t, 1, tree.countNodes(1))
+}
+
 func TestSimpleTree(t *testing.T) {
 	tags := make([]GeneratedType, 0)
 
