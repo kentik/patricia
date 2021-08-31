@@ -17,6 +17,29 @@ func ipv4FromBytes(bytes []byte, length int) patricia.IPv4Address {
 	}
 }
 
+func BenchmarkFindTags(b *testing.B) {
+	tagA := "tagA"
+	tagB := "tagB"
+	tagC := "tagC"
+	tagZ := "tagD"
+
+	tree := NewTreeV4()
+
+	tree.Add(patricia.IPv4Address{}, tagZ, nil) // default
+	tree.Add(ipv4FromBytes([]byte{129, 0, 0, 1}, 7), tagA, nil)
+	tree.Add(ipv4FromBytes([]byte{160, 0, 0, 0}, 2), tagB, nil) // 160 -> 128
+	tree.Add(ipv4FromBytes([]byte{128, 3, 6, 240}, 32), tagC, nil)
+
+	address := patricia.NewIPv4Address(uint32(2156823809), 32)
+
+	var buf []GeneratedType
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		buf = tree.FindTags(address)
+	}
+	_ = buf
+}
+
 func BenchmarkFindTagsAppend(b *testing.B) {
 	tagA := "tagA"
 	tagB := "tagB"
@@ -31,9 +54,10 @@ func BenchmarkFindTagsAppend(b *testing.B) {
 	tree.Add(ipv4FromBytes([]byte{160, 0, 0, 0}, 2), tagB, nil) // 160 -> 128
 	tree.Add(ipv4FromBytes([]byte{128, 3, 6, 240}, 32), tagC, nil)
 
+	address := patricia.NewIPv4Address(uint32(2156823809), 32)
+
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		address := patricia.NewIPv4Address(uint32(2156823809), 32)
 		buf = buf[:0]
 		buf = tree.FindTagsAppend(buf, address)
 	}
@@ -322,6 +346,98 @@ func TestSimpleTree1(t *testing.T) {
 	found, tag = tree.FindDeepestTag(ipv4FromBytes([]byte{151, 101, 124, 84}, 32))
 	assert.True(t, found)
 	assert.Equal(t, "tagC", tag)
+}
+
+// TestSimpleTree1Append tests that FindTagsAppend appends
+func TestSimpleTree1Append(t *testing.T) {
+	tree := NewTreeV4()
+
+	ipv4a := ipv4FromBytes([]byte{98, 139, 183, 24}, 32)
+	ipv4b := ipv4FromBytes([]byte{198, 186, 190, 179}, 32)
+	ipv4c := ipv4FromBytes([]byte{151, 101, 124, 84}, 32)
+
+	tree.Add(ipv4a, "tagA", nil)
+	tree.Add(ipv4b, "tagB", nil)
+	tree.Add(ipv4c, "tagC", nil)
+
+	tags := make([]GeneratedType, 0)
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{98, 139, 183, 24}, 32))
+	assert.Equal(t, 1, len(tags))
+	assert.Equal(t, "tagA", tags[0])
+
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{198, 186, 190, 179}, 32))
+	assert.Equal(t, 2, len(tags))
+	assert.Equal(t, "tagA", tags[0])
+	assert.Equal(t, "tagB", tags[1])
+
+	tags = tree.FindTagsAppend(tags, ipv4FromBytes([]byte{151, 101, 124, 84}, 32))
+	assert.Equal(t, 3, len(tags))
+	assert.Equal(t, "tagA", tags[0])
+	assert.Equal(t, "tagB", tags[1])
+	assert.Equal(t, "tagC", tags[2])
+}
+
+// TestSimpleTree1FilterAppend tests that FindTagsWithFilterAppend appends
+func TestSimpleTree1FilterAppend(t *testing.T) {
+	assert := assert.New(t)
+
+	include := true
+	filterFunc := func(val GeneratedType) bool {
+		return include
+	}
+
+	tree := NewTreeV4()
+
+	ipv4a := ipv4FromBytes([]byte{98, 139, 183, 24}, 32)
+	ipv4b := ipv4FromBytes([]byte{198, 186, 190, 179}, 32)
+	ipv4c := ipv4FromBytes([]byte{151, 101, 124, 84}, 32)
+
+	tree.Add(ipv4a, "tagA", nil)
+	tree.Add(ipv4b, "tagB", nil)
+	tree.Add(ipv4c, "tagC", nil)
+
+	include = false
+	tags := make([]GeneratedType, 0)
+	tags = tree.FindTagsWithFilterAppend(tags, ipv4FromBytes([]byte{98, 139, 183, 24}, 32), filterFunc)
+	assert.Equal(0, len(tags))
+
+	include = true
+	tags = tree.FindTagsWithFilterAppend(tags, ipv4FromBytes([]byte{98, 139, 183, 24}, 32), filterFunc)
+	assert.Equal(1, len(tags))
+	assert.Equal("tagA", tags[0])
+
+	include = false
+	tags = tree.FindTagsWithFilterAppend(tags, ipv4FromBytes([]byte{198, 186, 190, 179}, 32), filterFunc)
+	assert.Equal(1, len(tags))
+
+	include = true
+	tags = tree.FindTagsWithFilterAppend(tags, ipv4FromBytes([]byte{198, 186, 190, 179}, 32), filterFunc)
+	assert.Equal(2, len(tags))
+	assert.Equal("tagA", tags[0])
+	assert.Equal("tagB", tags[1])
+
+	include = false
+	tags = tree.FindTagsWithFilterAppend(tags, ipv4FromBytes([]byte{151, 101, 124, 84}, 32), filterFunc)
+	assert.Equal(2, len(tags))
+
+	include = true
+	tags = tree.FindTagsWithFilterAppend(tags, ipv4FromBytes([]byte{151, 101, 124, 84}, 32), filterFunc)
+	assert.Equal(3, len(tags))
+	assert.Equal("tagA", tags[0])
+	assert.Equal("tagB", tags[1])
+	assert.Equal("tagC", tags[2])
+
+	include = false
+	tags = tree.FindTagsWithFilterAppend(tags, ipv4FromBytes([]byte{151, 101, 124, 84}, 32), filterFunc)
+	assert.Equal(3, len(tags))
+
+	include = true
+	tags = tree.FindTagsWithFilterAppend(tags, ipv4FromBytes([]byte{151, 101, 124, 84}, 32), filterFunc)
+	assert.Equal(4, len(tags))
+	assert.Equal("tagA", tags[0])
+	assert.Equal("tagB", tags[1])
+	assert.Equal("tagC", tags[2])
+	assert.Equal("tagC", tags[2])
 }
 
 // Test having a couple of inner nodes
