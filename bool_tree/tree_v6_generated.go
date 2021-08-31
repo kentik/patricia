@@ -319,8 +319,14 @@ func (t *TreeV6) add(address patricia.IPv6Address, tag bool, matchFunc MatchesFu
 }
 
 // Delete a tag from the tree if it matches matchVal, as determined by matchFunc. Returns how many tags are removed
+// - use DeleteWithBuffer if you can reuse slices, to cut down on allocations
+func (t *TreeV6) Delete(address patricia.IPv6Address, matchFunc MatchesFunc, matchVal bool) int {
+	return t.DeleteWithBuffer(make([]bool, 0), address, matchFunc, matchVal)
+}
+
+// DeleteWithBuffer a tag from the tree if it matches matchVal, as determined by matchFunc. Returns how many tags are removed
 // - uses input slice to reduce allocations
-func (t *TreeV6) Delete(buf []bool, address patricia.IPv6Address, matchFunc MatchesFunc, matchVal bool) int {
+func (t *TreeV6) DeleteWithBuffer(buf []bool, address patricia.IPv6Address, matchFunc MatchesFunc, matchVal bool) int {
 	// traverse the tree, finding the node and its parent
 	root := &t.nodes[1]
 	var parentIndex uint
@@ -464,16 +470,26 @@ func (t *TreeV6) Delete(buf []bool, address patricia.IPv6Address, matchFunc Matc
 }
 
 // FindTagsWithFilter finds all matching tags that passes the filter function
-// - input slice is used to reduce allocations - will be reset before it's used
-func (t *TreeV6) FindTagsWithFilter(ret []bool, address patricia.IPv6Address, filterFunc FilterFunc) []bool {
-	ret = t.FindTags(ret, address)
+// - use FindTagsWithFilterAppend if you can reuse slices, to cut down on allocations
+func (t *TreeV6) FindTagsWithFilter(address patricia.IPv6Address, filterFunc FilterFunc) []bool {
+	ret := make([]bool, 0)
+	return t.FindTagsWithFilterAppend(ret, address, filterFunc)
+}
 
-	if len(ret) == 0 || filterFunc == nil {
+// FindTagsWithFilterAppend finds all matching tags that passes the filter function
+// - results are appended to the input slice
+func (t *TreeV6) FindTagsWithFilterAppend(ret []bool, address patricia.IPv6Address, filterFunc FilterFunc) []bool {
+	retPos := len(ret)
+	ret = t.FindTagsAppend(ret, address)
+
+	if len(ret) == retPos || filterFunc == nil {
 		return ret
 	}
 
-	retPos := 0
-	for _, val := range ret {
+	// filter in place
+	length := len(ret)
+	for i := retPos; i < length; i++ {
+		val := ret[i]
 		if filterFunc(val) {
 			ret[retPos] = val
 			retPos++
@@ -482,11 +498,15 @@ func (t *TreeV6) FindTagsWithFilter(ret []bool, address patricia.IPv6Address, fi
 	return ret[:retPos]
 }
 
-// FindTags finds all matching tags for given address and appends them to ret
-// - may return nil if none found
-func (t *TreeV6) FindTags(ret []bool, address patricia.IPv6Address) []bool {
-	ret = ret[:0]
+// FindTags finds all matching tags for given address
+// - use FindTagsAppend if you can reuse slices, to cut down on allocations
+func (t *TreeV6) FindTags(address patricia.IPv6Address) []bool {
+	ret := make([]bool, 0)
+	return t.FindTagsAppend(ret, address)
+}
 
+// FindTagsAppend finds all matching tags for given address and appends them to ret
+func (t *TreeV6) FindTagsAppend(ret []bool, address patricia.IPv6Address) []bool {
 	var matchCount uint
 	root := &t.nodes[1]
 
@@ -600,10 +620,15 @@ func (t *TreeV6) FindDeepestTag(address patricia.IPv6Address) (bool, bool) {
 }
 
 // FindDeepestTags finds all tags at the deepest level in the tree, representing the closest match
-// - may return nil if nothing found
-func (t *TreeV6) FindDeepestTags(ret []bool, address patricia.IPv6Address) (bool, []bool) {
-	ret = ret[:0]
+// - use FindDeepestTagsAppend if you can reuse slices, to cut down on allocations
+func (t *TreeV6) FindDeepestTags(address patricia.IPv6Address) (bool, []bool) {
+	ret := make([]bool, 0)
+	return t.FindDeepestTagsAppend(ret, address)
+}
 
+// FindDeepestTagsAppend finds all tags at the deepest level in the tree, representing the closest match
+// - appends results to the input slice
+func (t *TreeV6) FindDeepestTagsAppend(ret []bool, address patricia.IPv6Address) (bool, []bool) {
 	root := &t.nodes[1]
 	var found bool
 	var retTagIndex uint
