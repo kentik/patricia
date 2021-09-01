@@ -527,9 +527,7 @@ func (t *TreeV4) FindTagsAppend(ret []GeneratedType, address patricia.IPv4Addres
 	}
 
 	// traverse the tree
-	count := 0
 	for {
-		count++
 		if nodeIndex == 0 {
 			return ret
 		}
