@@ -79,10 +79,9 @@ func (t *TreeV6) addTag(tag int16, nodeIndex uint, matchFunc MatchesFunc, replac
 	return ret
 }
 
-// return the tags at the input node index - appending to the input slice
-// - nil if none found
+// return the tags at the input node index - appending to the input slice if they pass the optional filter func
 // - ret is only appended to
-func (t *TreeV6) tagsForNode(ret []int16, nodeIndex uint) []int16 {
+func (t *TreeV6) tagsForNode(ret []int16, nodeIndex uint, filterFunc FilterFunc) []int16 {
 	if nodeIndex == 0 {
 		// useful for base cases where we haven't found anything
 		return ret
@@ -92,7 +91,10 @@ func (t *TreeV6) tagsForNode(ret []int16, nodeIndex uint) []int16 {
 	tagCount := t.nodes[nodeIndex].TagCount
 	key := uint64(nodeIndex) << 32
 	for i := 0; i < tagCount; i++ {
-		ret = append(ret, t.tags[key+uint64(i)])
+		tag := t.tags[key+uint64(i)]
+		if filterFunc == nil || filterFunc(tag) {
+			ret = append(ret, tag)
+		}
 	}
 	return ret
 }
@@ -118,7 +120,7 @@ func (t *TreeV6) firstTagForNode(nodeIndex uint) int16 {
 func (t *TreeV6) deleteTag(buf []int16, nodeIndex uint, matchTag int16, matchFunc MatchesFunc) (int, int) {
 	// get tags
 	buf = buf[:0]
-	buf = t.tagsForNode(buf, nodeIndex)
+	buf = t.tagsForNode(buf, nodeIndex, nil)
 	if len(buf) == 0 {
 		return 0, 0
 	}
@@ -476,26 +478,9 @@ func (t *TreeV6) FindTagsWithFilter(address patricia.IPv6Address, filterFunc Fil
 	return t.FindTagsWithFilterAppend(ret, address, filterFunc)
 }
 
-// FindTagsWithFilterAppend finds all matching tags that passes the filter function
-// - results are appended to the input slice
-func (t *TreeV6) FindTagsWithFilterAppend(ret []int16, address patricia.IPv6Address, filterFunc FilterFunc) []int16 {
-	retPos := len(ret)
-	ret = t.FindTagsAppend(ret, address)
-
-	if len(ret) == retPos || filterFunc == nil {
-		return ret
-	}
-
-	// filter in place
-	length := len(ret)
-	for i := retPos; i < length; i++ {
-		val := ret[i]
-		if filterFunc(val) {
-			ret[retPos] = val
-			retPos++
-		}
-	}
-	return ret[:retPos]
+// FindTagsAppend finds all matching tags for given address and appends them to ret
+func (t *TreeV6) FindTagsAppend(ret []int16, address patricia.IPv6Address) []int16 {
+	return t.FindTagsWithFilterAppend(ret, address, nil)
 }
 
 // FindTags finds all matching tags for given address
@@ -505,13 +490,14 @@ func (t *TreeV6) FindTags(address patricia.IPv6Address) []int16 {
 	return t.FindTagsAppend(ret, address)
 }
 
-// FindTagsAppend finds all matching tags for given address and appends them to ret
-func (t *TreeV6) FindTagsAppend(ret []int16, address patricia.IPv6Address) []int16 {
+// FindTagsWithFilterAppend finds all matching tags that passes the filter function
+// - results are appended to the input slice
+func (t *TreeV6) FindTagsWithFilterAppend(ret []int16, address patricia.IPv6Address, filterFunc FilterFunc) []int16 {
 	var matchCount uint
 	root := &t.nodes[1]
 
 	if root.TagCount > 0 {
-		ret = t.tagsForNode(ret, 1)
+		ret = t.tagsForNode(ret, 1, filterFunc)
 	}
 
 	if address.Length == 0 {
@@ -527,9 +513,7 @@ func (t *TreeV6) FindTagsAppend(ret []int16, address patricia.IPv6Address) []int
 	}
 
 	// traverse the tree
-	count := 0
 	for {
-		count++
 		if nodeIndex == 0 {
 			return ret
 		}
@@ -543,7 +527,7 @@ func (t *TreeV6) FindTagsAppend(ret []int16, address patricia.IPv6Address) []int
 
 		// matched the full node - get its tags, then chop off the bits we've already matched and continue
 		if node.TagCount > 0 {
-			ret = t.tagsForNode(ret, nodeIndex)
+			ret = t.tagsForNode(ret, nodeIndex, filterFunc)
 		}
 
 		if matchCount == address.Length {
@@ -640,7 +624,7 @@ func (t *TreeV6) FindDeepestTagsAppend(ret []int16, address patricia.IPv6Address
 
 	if address.Length == 0 {
 		// caller just looking for root tags
-		return found, t.tagsForNode(ret, retTagIndex)
+		return found, t.tagsForNode(ret, retTagIndex, nil)
 	}
 
 	var nodeIndex uint
@@ -653,14 +637,14 @@ func (t *TreeV6) FindDeepestTagsAppend(ret []int16, address patricia.IPv6Address
 	// traverse the tree
 	for {
 		if nodeIndex == 0 {
-			return found, t.tagsForNode(ret, retTagIndex)
+			return found, t.tagsForNode(ret, retTagIndex, nil)
 		}
 		node := &t.nodes[nodeIndex]
 
 		matchCount := node.MatchCount(address)
 		if matchCount < node.prefixLength {
 			// didn't match the entire node - we're done
-			return found, t.tagsForNode(ret, retTagIndex)
+			return found, t.tagsForNode(ret, retTagIndex, nil)
 		}
 
 		// matched the full node - get its tags, then chop off the bits we've already matched and continue
@@ -671,7 +655,7 @@ func (t *TreeV6) FindDeepestTagsAppend(ret []int16, address patricia.IPv6Address
 
 		if matchCount == address.Length {
 			// exact match - we're done
-			return found, t.tagsForNode(ret, retTagIndex)
+			return found, t.tagsForNode(ret, retTagIndex, nil)
 		}
 
 		// there's still more address - keep traversing

@@ -26,6 +26,6 @@ func (t *TreeV6) print() {
 	buf := make([]uint8, 0)
 	for i := range t.nodes {
 		buf = buf[:0]
-		fmt.Printf("%d: \tleft: %d, right: %d, prefix: %032b %032b (%d), tags: (%d): %v\n", i, int(t.nodes[i].Left), int(t.nodes[i].Right), int(t.nodes[i].prefixLeft), int(t.nodes[i].prefixRight), int(t.nodes[i].prefixLength), t.nodes[i].TagCount, t.tagsForNode(buf, uint(i)))
+		fmt.Printf("%d: \tleft: %d, right: %d, prefix: %032b %032b (%d), tags: (%d): %v\n", i, int(t.nodes[i].Left), int(t.nodes[i].Right), int(t.nodes[i].prefixLeft), int(t.nodes[i].prefixRight), int(t.nodes[i].prefixLength), t.nodes[i].TagCount, t.tagsForNode(buf, uint(i), nil))
 	}
 }
