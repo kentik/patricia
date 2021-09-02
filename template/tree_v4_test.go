@@ -1031,13 +1031,13 @@ func TestDelete1(t *testing.T) {
 
 	// verify status of internal nodes collections
 	assert.Zero(t, len(tree.availableIndexes))
-	assert.Equal(t, "tagZ", tree.tagsForNode(tags, 1)[0])
+	assert.Equal(t, "tagZ", tree.tagsForNode(tags, 1, nil)[0], nil)
 	tags = tags[:0]
-	assert.Equal(t, "tagA", tree.tagsForNode(tags, 2)[0])
+	assert.Equal(t, "tagA", tree.tagsForNode(tags, 2, nil)[0], nil)
 	tags = tags[:0]
-	assert.Equal(t, "tagB", tree.tagsForNode(tags, 3)[0])
+	assert.Equal(t, "tagB", tree.tagsForNode(tags, 3, nil)[0], nil)
 	tags = tags[:0]
-	assert.Equal(t, "tagC", tree.tagsForNode(tags, 4)[0])
+	assert.Equal(t, "tagC", tree.tagsForNode(tags, 4, nil)[0], nil)
 	tags = tags[:0]
 
 	// three tags in a hierarchy - ask for an exact match, receive all 3 and the root
@@ -1112,7 +1112,7 @@ func TestDelete1(t *testing.T) {
 	assert.Equal(t, uint(2), tree.availableIndexes[0])
 
 	tags = tags[:0]
-	assert.Equal(t, "tagE", tree.tagsForNode(tags, 3)[0])
+	assert.Equal(t, "tagE", tree.tagsForNode(tags, 3, nil)[0])
 
 	// 6. delete tag C
 	count = tree.DeleteWithBuffer(tags, ipv4FromBytes([]byte{128, 3, 6, 240}, 32), matchFunc, "tagC")
@@ -1153,16 +1153,16 @@ func TestTagsMap(t *testing.T) {
 	// verify
 	assert.Equal(t, 3, tree.nodes[1].TagCount)
 	assert.Equal(t, "tagA", tree.firstTagForNode(1))
-	assert.Equal(t, 3, len(tree.tagsForNode(tags, 1)))
+	assert.Equal(t, 3, len(tree.tagsForNode(tags, 1, nil)))
 	tags = tags[:0]
 
-	assert.Equal(t, "tagA", tree.tagsForNode(tags, 1)[0])
+	assert.Equal(t, "tagA", tree.tagsForNode(tags, 1, nil)[0])
 	tags = tags[:0]
 
-	assert.Equal(t, "tagB", tree.tagsForNode(tags, 1)[1])
+	assert.Equal(t, "tagB", tree.tagsForNode(tags, 1, nil)[1])
 	tags = tags[:0]
 
-	assert.Equal(t, "tagC", tree.tagsForNode(tags, 1)[2])
+	assert.Equal(t, "tagC", tree.tagsForNode(tags, 1, nil)[2])
 	tags = tags[:0]
 
 	// delete tagB
@@ -1176,10 +1176,10 @@ func TestTagsMap(t *testing.T) {
 	assert.Equal(t, 1, deleted)
 	assert.Equal(t, 2, kept)
 	assert.Equal(t, 2, tree.nodes[1].TagCount)
-	assert.Equal(t, "tagA", tree.tagsForNode(tags, 1)[0])
+	assert.Equal(t, "tagA", tree.tagsForNode(tags, 1, nil)[0])
 	tags = tags[:0]
 
-	assert.Equal(t, "tagC", tree.tagsForNode(tags, 1)[1])
+	assert.Equal(t, "tagC", tree.tagsForNode(tags, 1, nil)[1])
 	tags = tags[:0]
 }
 
