@@ -323,7 +323,7 @@ func (t *TreeV6) add(address patricia.IPv6Address, tag complex128, matchFunc Mat
 // Delete a tag from the tree if it matches matchVal, as determined by matchFunc. Returns how many tags are removed
 // - use DeleteWithBuffer if you can reuse slices, to cut down on allocations
 func (t *TreeV6) Delete(address patricia.IPv6Address, matchFunc MatchesFunc, matchVal complex128) int {
-	return t.DeleteWithBuffer(make([]complex128, 0), address, matchFunc, matchVal)
+	return t.DeleteWithBuffer(nil, address, matchFunc, matchVal)
 }
 
 // DeleteWithBuffer a tag from the tree if it matches matchVal, as determined by matchFunc. Returns how many tags are removed
