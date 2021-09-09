@@ -73,6 +73,7 @@ func TestBulkLoad(t *testing.T) {
 		assert.Equal(t, recordsLoaded, tree.CountTags())
 	}
 
+	buf := make([]GeneratedType, 0)
 	evaluate := func() {
 		fmt.Printf("# of nodes: %d\n", len(tree.nodes))
 		// query all tags from each address, query specific tag from each address, delete the tag
@@ -83,21 +84,18 @@ func TestBulkLoad(t *testing.T) {
 				panic(fmt.Sprintf("search: Could not parse IP '%s': %s", address, err))
 			}
 			if v4 != nil {
-				foundTags, err := tree.FindTags(*v4)
-				assert.NoError(t, err)
+				foundTags := tree.FindTagsAppend(buf, *v4)
 				if assert.True(t, len(foundTags) > 0, "Couldn't find tags for "+address) {
 					assert.True(t, tag == foundTags[len(foundTags)-1])
 				}
 
-				found, foundTag, err := tree.FindDeepestTag(*v4)
-				assert.NoError(t, err)
+				found, foundTag := tree.FindDeepestTag(*v4)
 				assert.True(t, found, "Couldn't find deepest tag")
 				assert.True(t, tag == foundTag)
 
 				// delete the tags now
 				//fmt.Printf("Deleting %s: %s\n", address, tag)
-				deleteCount, err := tree.Delete(*v4, func(a GeneratedType, b GeneratedType) bool { return a == b }, tag)
-				assert.NoError(t, err)
+				deleteCount := tree.DeleteWithBuffer(buf, *v4, func(a GeneratedType, b GeneratedType) bool { return a == b }, tag)
 				assert.Equal(t, 1, deleteCount, "Tried deleting tag")
 				//tree.print()
 			} else if v6 == nil {
