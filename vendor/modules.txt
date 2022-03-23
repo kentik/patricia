@@ -1,6 +1,0 @@
-# github.com/davecgh/go-spew v1.1.1
-github.com/davecgh/go-spew/spew
-# github.com/pmezard/go-difflib v1.0.0
-github.com/pmezard/go-difflib/difflib
-# github.com/stretchr/testify v1.1.5-0.20170809224252-890a5c3458b4
-github.com/stretchr/testify/assert

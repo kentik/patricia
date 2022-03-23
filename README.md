@@ -1,6 +1,11 @@
 Garbage collector-sensitive patricia tree for IP/CIDR tagging
 =============================================================
 
+![CI](https://github.com/kentik/patricia/workflows/CI/badge.svg)
+[![GitHub Release](https://img.shields.io/github/release/kentik/patricia.svg?style=flat)](https://github.com/kentik/patricia/releases/latest)
+[![Coverage Status](https://coveralls.io/repos/github/kentik/patricia/badge.svg?branch=main)](https://coveralls.io/github/kentik/patricia?branch=main)
+[![Go Report Card](https://goreportcard.com/badge/github.com/kentik/patricia)](https://goreportcard.com/report/github.com/kentik/patricia)
+
 What is this?
 -------------
 
