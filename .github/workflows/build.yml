@@ -37,7 +37,6 @@ jobs:
         with:
           version: v1.45.0
           only-new-issues: true
-          args: --enable-all
 
   coverage:
     runs-on: ubuntu-latest
