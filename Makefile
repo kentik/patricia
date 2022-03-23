@@ -1,5 +1,3 @@
-_GOPATH 			:= $(PWD)/../../../..
-export GOPATH := $(_GOPATH)
 GENERATED_TYPES := bool string int int8 int16 int32 int64 uint uint8 uint16 uint32 uint64 byte rune float32 float64 complex64 complex128
 # on mac use gsed
 UNAME_S = $(shell uname -s)
@@ -36,8 +34,8 @@ clean:
 
 .PHONY: code
 code:
-	go build `go list ./... | grep -v /vendor/ `
+	go build -v ./...
 
 .PHONY: test
 test:
-	go test -v `go list ./... | grep -v /vendor/ `
+	go test -v ./... --cover --race
