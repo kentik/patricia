@@ -22,6 +22,7 @@ func (t *TreeV6) newNode(address patricia.IPv6Address, prefixLength uint) uint {
 	return uint(len(t.nodes) - 1)
 }
 
+//nolint
 func (t *TreeV6) print() {
 	buf := make([]byte, 0)
 	for i := range t.nodes {

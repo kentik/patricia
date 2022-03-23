@@ -286,7 +286,7 @@ func TestTree2(t *testing.T) {
 func TestFindDeepestTags(t *testing.T) {
 	assert := assert.New(t)
 
-	tags := make([]GeneratedType, 0)
+	var tags []GeneratedType
 	found := false
 
 	tree := NewTreeV4()
@@ -506,8 +506,7 @@ func TestSimpleTree1FindTags(t *testing.T) {
 	tree.Add(ipv4b, "tagB", nil)
 	tree.Add(ipv4c, "tagC", nil)
 
-	tags := make([]GeneratedType, 0)
-	tags = tree.FindTags(ipv4FromBytes([]byte{98, 139, 183, 24}, 32))
+	tags := tree.FindTags(ipv4FromBytes([]byte{98, 139, 183, 24}, 32))
 	assert.Equal(t, 1, len(tags))
 	assert.Equal(t, "tagA", tags[0])
 
@@ -603,8 +602,7 @@ func TestSimpleTree1Filter(t *testing.T) {
 	tree.Add(ipv4c, "tagC", nil)
 
 	include = false
-	tags := make([]GeneratedType, 0)
-	tags = tree.FindTagsWithFilter(ipv4FromBytes([]byte{98, 139, 183, 24}, 32), filterFunc)
+	tags := tree.FindTagsWithFilter(ipv4FromBytes([]byte{98, 139, 183, 24}, 32), filterFunc)
 	assert.Equal(0, len(tags))
 
 	include = true
@@ -958,6 +956,7 @@ func TestSet(t *testing.T) {
 
 	// add a parent node, just to mix things up
 	countIncreased, count := tree.Set(ipv4FromBytes([]byte{1, 2, 3, 0}, 24), "parent")
+	assert.True(t, countIncreased)
 	assert.Equal(t, 1, count)
 
 	countIncreased, count = tree.Set(address, "tagA")
@@ -1180,7 +1179,6 @@ func TestTagsMap(t *testing.T) {
 	tags = tags[:0]
 
 	assert.Equal(t, "tagC", tree.tagsForNode(tags, 1, nil)[1])
-	tags = tags[:0]
 }
 
 // test duplicate tags with no match func
@@ -1260,12 +1258,4 @@ func TestDuplicateTagsWithMatchFunc(t *testing.T) {
 	wasAdded, count = tree.Add(ipv4FromBytes([]byte{129, 0, 0, 1}, 7), "BAR", matchFunc)
 	assert.False(t, wasAdded)
 	assert.Equal(t, 2, count)
-}
-
-func payloadToByteArrays(tags []GeneratedType) [][]byte {
-	ret := make([][]byte, 0, len(tags))
-	for _, tag := range tags {
-		ret = append(ret, tag.([]byte))
-	}
-	return ret
 }

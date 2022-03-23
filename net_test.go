@@ -12,10 +12,10 @@ func TestParseIPFromString(t *testing.T) {
 	var v6IP *IPv6Address
 	var err error
 
-	v4IP, v6IP, err = ParseIPFromString("sdfkjsdfdsfd")
+	_, _, err = ParseIPFromString("sdfkjsdfdsfd")
 	assert.Error(t, err)
 
-	v4IP, v6IP, err = ParseIPFromString("")
+	_, _, err = ParseIPFromString("")
 	assert.Error(t, err)
 
 	v4IP, v6IP, err = ParseIPFromString("0.0.0.0/0")
@@ -30,10 +30,10 @@ func TestParseIPFromString(t *testing.T) {
 	assert.NotNil(t, v4IP)
 	assert.Nil(t, v6IP)
 
-	v4IP, v6IP, err = ParseIPFromString("127.0.0.1/999")
+	_, _, err = ParseIPFromString("127.0.0.1/999")
 	assert.Error(t, err)
 
-	v4IP, v6IP, err = ParseIPFromString("127.0.0.1/33")
+	_, _, err = ParseIPFromString("127.0.0.1/33")
 	assert.Error(t, err)
 
 	v4IP, v6IP, err = ParseIPFromString("1.0.16.0/0")
@@ -70,7 +70,7 @@ func TestParseIPFromString(t *testing.T) {
 	assert.Equal(t, uint64(0x20010db885a30000), v6IP.Left)
 	assert.Equal(t, uint64(0x00008a2e03707334), v6IP.Right)
 
-	v4IP, v6IP, err = ParseIPFromString("2001:0db8:85a3:0000:0000:8a2e:0370:7334/129")
+	_, _, err = ParseIPFromString("2001:0db8:85a3:0000:0000:8a2e:0370:7334/129")
 	assert.Error(t, err)
 
 	v4IP, v6IP, err = ParseIPFromString("2001:0db8:85a3:0000:0000:8a2e:0370:7334/16")
@@ -83,6 +83,7 @@ func TestParseIPFromString(t *testing.T) {
 
 	_, ipr, _ := net.ParseCIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/16")
 	v4IP, v6IP, err = ParseFromIPAddr(ipr)
+	assert.NoError(t, err)
 	assert.Nil(t, v4IP)
 	assert.NotNil(t, v6IP)
 	assert.Equal(t, uint(16), v6IP.Length)
