@@ -16,7 +16,7 @@ type TreeV6 struct {
 // NewTreeV6 returns a new Tree
 func NewTreeV6() *TreeV6 {
 	return &TreeV6{
-		nodes:            make([]treeNodeV6, 2, 2), // index 0 is skipped, 1 is root
+		nodes:            make([]treeNodeV6, 2), // index 0 is skipped, 1 is root
 		availableIndexes: make([]uint, 0),
 		tags:             make(map[uint64]float32),
 	}
@@ -669,6 +669,7 @@ func (t *TreeV6) FindDeepestTagsAppend(ret []float32, address patricia.IPv6Addre
 }
 
 // note: this is only used for unit testing
+//nolint
 func (t *TreeV6) countNodes(nodeIndex uint) int {
 	nodeCount := 1
 
@@ -683,6 +684,7 @@ func (t *TreeV6) countNodes(nodeIndex uint) int {
 }
 
 // note: this is only used for unit testing
+//nolint
 func (t *TreeV6) countTags(nodeIndex uint) int {
 	node := &t.nodes[nodeIndex]
 

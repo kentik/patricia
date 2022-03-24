@@ -16,7 +16,9 @@ func TestNewIPv4Address(t *testing.T) {
 	assert.Equal(t, uint(7), sut.Length)
 	assert.Equal(t, "1.35.69.103/7", sut.String())
 	assert.Equal(t, "1.35.69.103/7", (&sut).String())
+	//nolint
 	assert.Equal(t, "1.35.69.103/7", fmt.Sprintf("%s", sut))
+	//nolint
 	assert.Equal(t, "1.35.69.103/7", fmt.Sprintf("%s", &sut))
 }
 

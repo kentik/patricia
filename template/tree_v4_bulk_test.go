@@ -137,23 +137,3 @@ func TestBulkLoad(t *testing.T) {
 
 	//print()
 }
-
-func arraysEqual(tag string, expected []string, found []GeneratedType) bool {
-	if len(expected) != len(found) {
-		return false
-	}
-
-	for _, tagA := range expected {
-		didFind := false
-		for _, tagB := range found {
-			if tagB == tagA {
-				didFind = true
-				break
-			}
-		}
-		if !didFind {
-			return false
-		}
-	}
-	return true
-}
