@@ -1,3 +1,5 @@
+// Template file.
+
 package template
 
 // code common to the IPv4/IPv6 trees

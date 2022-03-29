@@ -1,3 +1,5 @@
+// Template file.
+
 package template
 
 import (
