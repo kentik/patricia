@@ -60,6 +60,24 @@ func ParseIPFromString(address string) (*IPv4Address, *IPv6Address, error) {
 	return nil, nil, fmt.Errorf("couldn't parse either v4 or v6 address")
 }
 
+// ParseFromIP builds an IPv4Address or IPv6Address from a net.IP
+func ParseFromIP(ip *net.IP) (*IPv4Address, *IPv6Address, error) {
+	if ip == nil {
+		return nil, nil, fmt.Errorf("Nil address: %v", ip)
+	}
+
+	if v4Addr := ip.To4(); v4Addr != nil {
+		ret := NewIPv4AddressFromBytes(v4Addr, 32)
+		return &ret, nil, nil
+	}
+	if v6Addr := ip.To16(); v6Addr != nil {
+		ret := NewIPv6Address(v6Addr, 128)
+		return nil, &ret, nil
+	}
+
+	return nil, nil, fmt.Errorf("couldn't parse either v4 or v6 address: %v", ip)
+}
+
 // ParseFromIPAddr builds an IPv4Address or IPv6Address from a net.IPNet
 func ParseFromIPAddr(ipNet *net.IPNet) (*IPv4Address, *IPv6Address, error) {
 	if ipNet == nil {
