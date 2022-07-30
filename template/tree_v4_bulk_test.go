@@ -3,17 +3,18 @@ package template
 import (
 	"bufio"
 	"fmt"
-	"github.com/kentik/patricia"
-	"github.com/stretchr/testify/assert"
 	"log"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/kentik/patricia"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBulkLoad(t *testing.T) {
 	// Test bulk loading
-	filePath := "./test_tags.tsv"
+	filePath := "../test_tags.tsv"
 	recordsToLoad := -1 // -1 == all
 
 	tree := NewTreeV4()

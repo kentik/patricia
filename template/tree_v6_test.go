@@ -114,7 +114,7 @@ func TestSimpleTreeV6(t *testing.T) {
 	// find deepest tag: no match
 	found, tag = tree.FindDeepestTag(ipv6FromString("F001:db8:1:0:0:0:2:1/128", 32))
 	assert.False(t, found)
-	assert.Nil(t, tag)
+	assert.Zero(t, tag)
 
 	// Add a couple root tags
 	countIncreased, count := tree.Add(ipv6FromString("2001:db8:1:0:0:0:2:1/128", 0), "root1", nil)
@@ -466,7 +466,7 @@ func TestIterateV6(t *testing.T) {
 	iter = tree.Iterate()
 	for iter.Next() {
 		tags := []string{}
-		for _, s := range iter.Tags() {
+		for _, s := range iter.Tags() { //nolint:gosimple
 			tags = append(tags, s.(string))
 		}
 		got[iter.Address().String()] = tags
