@@ -433,3 +433,43 @@ func TestDuplicateTagsWithMatchFuncV6(t *testing.T) {
 	assert.False(t, wasAdded)
 	assert.Equal(t, 2, count)
 }
+
+// test tree traversal
+func TestIterateV6(t *testing.T) {
+	tree := NewTreeV6()
+
+	// try an empty tree first
+	iter := tree.Iterate()
+	for iter.Next() {
+		assert.Fail(t, "empty tree should not have a next element")
+	}
+
+	ipA := ipv6FromString("2001:db8::cb8f:dc00/128", 119)
+	ipB := ipv6FromString("2001:db8::cb8f:dcc6/128", 128)
+	ipC := ipv6FromString("2001:db8::cb8f:0/128", 112)
+	ipD := ipv6FromString("2001:db8::cb8f:dd4b/128", 128)
+
+	// add the 4 addresses
+	tree.Add(ipA, "A", nil)
+	tree.Add(ipB, "B", nil)
+	tree.Add(ipC, "C", nil)
+	tree.Add(ipD, "D1", nil)
+	tree.Add(ipD, "D2", nil)
+
+	expected := map[string][]string{
+		"2001:db8::cb8f:dc00/119": {"A"},
+		"2001:db8::cb8f:dcc6/128": {"B"},
+		"2001:db8::cb8f:0/112":    {"C"},
+		"2001:db8::cb8f:dd4b/128": {"D1", "D2"},
+	}
+	got := map[string][]string{}
+	iter = tree.Iterate()
+	for iter.Next() {
+		tags := []string{}
+		for _, s := range iter.Tags() {
+			tags = append(tags, s.(string))
+		}
+		got[iter.Address().String()] = tags
+	}
+	assert.Equal(t, expected, got)
+}
