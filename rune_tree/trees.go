@@ -9,3 +9,14 @@ type MatchesFunc func(payload rune, val rune) bool
 
 // FilterFunc is called on each result to see if it belongs in the resulting set
 type FilterFunc func(payload rune) bool
+
+// treeIteratorNext is an indicator to know what Next() should return
+// for the current node.
+type treeIteratorNext int
+
+const (
+	nextSelf treeIteratorNext = iota
+	nextLeft
+	nextRight
+	nextUp
+)

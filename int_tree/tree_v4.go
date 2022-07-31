@@ -670,6 +670,83 @@ func (t *TreeV4) FindDeepestTagsAppend(ret []int, address patricia.IPv4Address) 
 	}
 }
 
+// TreeIteratorV4 is a stateful iterator over a tree.
+type TreeIteratorV4 struct {
+	t           *TreeV4
+	nodeIndex   uint
+	nodeHistory []uint
+	next        treeIteratorNext
+}
+
+// Iterate returns an iterator to find all nodes from a tree. It is
+// important for the tree to not be modified while using the iterator.
+func (t *TreeV4) Iterate() *TreeIteratorV4 {
+	return &TreeIteratorV4{
+		t:           t,
+		nodeIndex:   1,
+		nodeHistory: []uint{},
+		next:        nextSelf,
+	}
+}
+
+// Next jumps to the next element of a tree. It returns false if there
+// is none.
+func (iter *TreeIteratorV4) Next() bool {
+	for {
+		node := &iter.t.nodes[iter.nodeIndex]
+		if iter.next == nextSelf {
+			iter.next = nextLeft
+			if node.TagCount != 0 {
+				return true
+			}
+		}
+		if iter.next == nextLeft {
+			if node.Left != 0 {
+				iter.nodeHistory = append(iter.nodeHistory, iter.nodeIndex)
+				iter.nodeIndex = node.Left
+				iter.next = nextSelf
+			} else {
+				iter.next = nextRight
+			}
+		}
+		if iter.next == nextRight {
+			if node.Right != 0 {
+				iter.nodeHistory = append(iter.nodeHistory, iter.nodeIndex)
+				iter.nodeIndex = node.Right
+				iter.next = nextSelf
+			} else {
+				// We need to backtrack
+				iter.next = nextUp
+			}
+		}
+		if iter.next == nextUp {
+			nodeHistoryLen := len(iter.nodeHistory)
+			if nodeHistoryLen == 0 {
+				return false
+			}
+			previousIndex := iter.nodeHistory[nodeHistoryLen-1]
+			previousNode := iter.t.nodes[previousIndex]
+			iter.nodeHistory = iter.nodeHistory[:nodeHistoryLen-1]
+			if previousNode.Left == iter.nodeIndex {
+				iter.nodeIndex = previousIndex
+				iter.next = nextRight
+			} else if previousNode.Right == iter.nodeIndex {
+				iter.nodeIndex = previousIndex
+				iter.next = nextUp
+			} else {
+				panic("unexpected state")
+			}
+		}
+	}
+}
+
+// Tags return the current tags for the iterator. This is not a copy
+// and the result should not be used outside the iterator.
+func (iter *TreeIteratorV4) Tags() []int {
+	tags := iter.t.tagsForNode(make([]int, 0), uint(iter.nodeIndex), nil)
+	return tags
+}
+
 // note: this is only used for unit testing
 //nolint
 func (t *TreeV4) countNodes(nodeIndex uint) int {

@@ -24,6 +24,24 @@ func (t *TreeV6) newNode(address patricia.IPv6Address, prefixLength uint) uint {
 	return uint(len(t.nodes) - 1)
 }
 
+// Address returns the current IP address for the iterator.
+func (iter *TreeIteratorV6) Address() patricia.IPv6Address {
+	var prefixLeft, prefixRight uint64
+	var prefixLength uint
+	for _, i := range iter.nodeHistory {
+		prefixLeft, prefixRight, prefixLength = patricia.MergePrefixes64(prefixLeft, prefixRight, prefixLength,
+			iter.t.nodes[i].prefixLeft, iter.t.nodes[i].prefixRight, iter.t.nodes[i].prefixLength)
+	}
+	prefixLeft, prefixRight, prefixLength = patricia.MergePrefixes64(prefixLeft, prefixRight, prefixLength,
+		iter.t.nodes[iter.nodeIndex].prefixLeft, iter.t.nodes[iter.nodeIndex].prefixRight,
+		iter.t.nodes[iter.nodeIndex].prefixLength)
+	return patricia.IPv6Address{
+		Left:   prefixLeft,
+		Right:  prefixRight,
+		Length: prefixLength,
+	}
+}
+
 //nolint
 func (t *TreeV6) print() {
 	buf := make([]float64, 0)
