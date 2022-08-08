@@ -1259,3 +1259,43 @@ func TestDuplicateTagsWithMatchFunc(t *testing.T) {
 	assert.False(t, wasAdded)
 	assert.Equal(t, 2, count)
 }
+
+// test tree traversal
+func TestIterateV4(t *testing.T) {
+	tree := NewTreeV4()
+
+	// try an empty tree first
+	iter := tree.Iterate()
+	for iter.Next() {
+		assert.Fail(t, "empty tree should not have a next element")
+	}
+
+	ipA := ipv4FromBytes([]byte{203, 143, 220, 0}, 23)
+	ipB := ipv4FromBytes([]byte{203, 143, 220, 198}, 32)
+	ipC := ipv4FromBytes([]byte{203, 143, 0, 0}, 16)
+	ipD := ipv4FromBytes([]byte{203, 143, 221, 75}, 32)
+
+	// add the 4 addresses
+	tree.Add(ipA, "A", nil)
+	tree.Add(ipB, "B", nil)
+	tree.Add(ipC, "C", nil)
+	tree.Add(ipD, "D1", nil)
+	tree.Add(ipD, "D2", nil)
+
+	expected := map[string][]string{
+		"203.143.220.0/23":   {"A"},
+		"203.143.220.198/32": {"B"},
+		"203.143.0.0/16":     {"C"},
+		"203.143.221.75/32":  {"D1", "D2"},
+	}
+	got := map[string][]string{}
+	iter = tree.Iterate()
+	for iter.Next() {
+		tags := []string{}
+		for _, s := range iter.Tags() {
+			tags = append(tags, s.(string))
+		}
+		got[iter.Address().String()] = tags
+	}
+	assert.Equal(t, expected, got)
+}
