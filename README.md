@@ -13,7 +13,7 @@ A Go implemenation of a [patricia tree](https://en.wikipedia.org/wiki/Radix_tree
 tagging IPv4 and IPv6 addresses with CIDR bits, with a focus on producing as little garbage for the garbage collector to
 manage as possible. This allows you to tag millions of IP addresses without incurring a penalty during GC scanning.
 
-This library requires Go >= 1.9.
+This library requires Go >= 1.18. Check version [1.1.0](https://github.com/kentik/patricia/releases/tag/v1.1.0) if you wish to use a prrio version.
 
 IP/CIDR tagging
 ---------------
