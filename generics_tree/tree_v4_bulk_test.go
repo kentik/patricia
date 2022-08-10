@@ -1,4 +1,4 @@
-package template
+package generics_tree
 
 import (
 	"bufio"
@@ -17,7 +17,7 @@ func TestBulkLoad(t *testing.T) {
 	filePath := "../test_tags.tsv"
 	recordsToLoad := -1 // -1 == all
 
-	tree := NewTreeV4()
+	tree := NewTreeV4[string]()
 	var ipToTags map[string]string
 	var ips []string
 
@@ -74,7 +74,7 @@ func TestBulkLoad(t *testing.T) {
 		assert.Equal(t, recordsLoaded, tree.CountTags())
 	}
 
-	buf := make([]GeneratedType, 0)
+	buf := make([]string, 0)
 	evaluate := func() {
 		fmt.Printf("# of nodes: %d\n", len(tree.nodes))
 		// query all tags from each address, query specific tag from each address, delete the tag
@@ -96,7 +96,7 @@ func TestBulkLoad(t *testing.T) {
 
 				// delete the tags now
 				//fmt.Printf("Deleting %s: %s\n", address, tag)
-				deleteCount := tree.DeleteWithBuffer(buf, *v4, func(a GeneratedType, b GeneratedType) bool { return a == b }, tag)
+				deleteCount := tree.DeleteWithBuffer(buf, *v4, func(a string, b string) bool { return a == b }, tag)
 				assert.Equal(t, 1, deleteCount, "Tried deleting tag")
 				//tree.print()
 			} else if v6 == nil {

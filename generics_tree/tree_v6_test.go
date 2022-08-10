@@ -1,4 +1,4 @@
-package template
+package generics_tree
 
 import (
 	"encoding/binary"
@@ -28,14 +28,14 @@ func BenchmarkFindTagsV6(b *testing.B) {
 	tagC := "tagC"
 	tagZ := "tagD"
 
-	tree := NewTreeV6()
+	tree := NewTreeV6[string]()
 
 	tree.Add(patricia.IPv6Address{}, tagZ, nil) // default
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128), tagA, nil)
 	tree.Add(ipv6FromString("2001:db8:0:0:0:5:2:1/128", 16), tagB, nil) // 160 -> 128
 	tree.Add(ipv6FromString("2001:db7:0:0:0:0:2:1/128", 77), tagC, nil)
 
-	buf := make([]GeneratedType, 0)
+	buf := make([]string, 0)
 	address := ipv6FromString("2001:db7:0:0:0:0:2:1/128", 32)
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
@@ -45,7 +45,7 @@ func BenchmarkFindTagsV6(b *testing.B) {
 }
 
 func BenchmarkFindDeepestTagV6(b *testing.B) {
-	tree := NewTreeV6()
+	tree := NewTreeV6[string]()
 	for i := 128; i > 0; i-- {
 		tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", i), fmt.Sprintf("Tag-%d", i), nil)
 	}
@@ -57,9 +57,9 @@ func BenchmarkFindDeepestTagV6(b *testing.B) {
 }
 
 func TestSimpleTreeV6(t *testing.T) {
-	tags := make([]GeneratedType, 0)
+	tags := make([]string, 0)
 
-	tree := NewTreeV6()
+	tree := NewTreeV6[string]()
 
 	for i := 128; i > 0; i-- {
 		countIncreased, count := tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", i), fmt.Sprintf("Tag-%d", i), nil)
@@ -70,8 +70,8 @@ func TestSimpleTreeV6(t *testing.T) {
 	tags = tags[:0]
 	tags = tree.FindTagsAppend(tags, ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128))
 	if assert.Equal(t, 128, len(tags)) {
-		assert.Equal(t, "Tag-128", tags[127].(string))
-		assert.Equal(t, "Tag-32", tags[31].(string))
+		assert.Equal(t, "Tag-128", tags[127])
+		assert.Equal(t, "Tag-32", tags[31])
 	}
 
 	tags = tags[:0]
@@ -91,24 +91,24 @@ func TestSimpleTreeV6(t *testing.T) {
 	found, tag = tree.FindDeepestTag(ipv6FromString("7001:db8:0:0:0:0:2:1/128", 128))
 	assert.True(t, found)
 	if assert.NotNil(t, tag) {
-		assert.Equal(t, "Tag-1", tag.(string))
+		assert.Equal(t, "Tag-1", tag)
 	}
 	found, tag = tree.FindDeepestTag(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 1))
 	assert.True(t, found)
 	if assert.NotNil(t, tag) {
-		assert.Equal(t, "Tag-1", tag.(string))
+		assert.Equal(t, "Tag-1", tag)
 	}
 
 	// find deepest tag: match at mid level
 	found, tag = tree.FindDeepestTag(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 32))
 	assert.True(t, found)
 	if assert.NotNil(t, tag) {
-		assert.Equal(t, "Tag-32", tag.(string))
+		assert.Equal(t, "Tag-32", tag)
 	}
 	found, tag = tree.FindDeepestTag(ipv6FromString("2001:db8:FFFF:0:0:0:2:1/128", 128))
 	assert.True(t, found)
 	if assert.NotNil(t, tag) {
-		assert.Equal(t, "Tag-32", tag.(string))
+		assert.Equal(t, "Tag-32", tag)
 	}
 
 	// find deepest tag: no match
@@ -127,20 +127,20 @@ func TestSimpleTreeV6(t *testing.T) {
 	tags = tags[:0]
 	tags = tree.FindTagsAppend(tags, patricia.IPv6Address{})
 	if assert.Equal(t, 2, len(tags)) {
-		assert.Equal(t, "root1", tags[0].(string))
-		assert.Equal(t, "root2", tags[1].(string))
+		assert.Equal(t, "root1", tags[0])
+		assert.Equal(t, "root2", tags[1])
 	}
 }
 
 func TestTree1V6(t *testing.T) {
-	tags := make([]GeneratedType, 0)
+	tags := make([]string, 0)
 
 	tagA := "tagA"
 	tagB := "tagB"
 	tagC := "tagC"
 	tagZ := "tagD"
 
-	tree := NewTreeV6()
+	tree := NewTreeV6[string]()
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 0), tagZ, nil) // default
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 100), tagA, nil)
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 67), tagB, nil)
@@ -174,18 +174,18 @@ func TestTree1V6(t *testing.T) {
 }
 
 func TestTree1V6WithFilter(t *testing.T) {
-	tags := make([]GeneratedType, 0)
+	tags := make([]string, 0)
 
 	tagA := "tagA"
 	tagB := "tagB"
 	tagC := "tagC"
 	tagZ := "tagD"
 
-	filterFunc := func(val GeneratedType) bool {
+	filterFunc := func(val string) bool {
 		return val == "tagA" || val == "tagB"
 	}
 
-	tree := NewTreeV6()
+	tree := NewTreeV6[string]()
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 0), tagZ, nil) // default
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 100), tagA, nil)
 	tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 67), tagB, nil)
@@ -220,7 +220,7 @@ func TestTree1V6WithFilter(t *testing.T) {
 
 // Test that all queries get the root nodes
 func TestRootNodeV6(t *testing.T) {
-	tags := make([]GeneratedType, 0)
+	tags := make([]string, 0)
 
 	tagA := "tagA"
 	tagB := "tagB"
@@ -228,7 +228,7 @@ func TestRootNodeV6(t *testing.T) {
 	tagD := "tagD"
 	tagZ := "tagE"
 
-	tree := NewTreeV6()
+	tree := NewTreeV6[string]()
 
 	// root node gets tags A & B
 	tree.Add(patricia.IPv6Address{}, tagA, nil)
@@ -264,19 +264,19 @@ func TestRootNodeV6(t *testing.T) {
 }
 
 func TestDelete1V6(t *testing.T) {
-	tags := make([]GeneratedType, 0)
+	tags := make([]string, 0)
 
-	matchFunc := func(tagData GeneratedType, val GeneratedType) bool {
-		return tagData.(string) == val.(string)
+	matchFunc := func(tagData string, val string) bool {
+		return tagData == val
 	}
 
-	buf := make([]GeneratedType, 0, 10)
+	buf := make([]string, 0, 10)
 	tagA := "tagA"
 	tagB := "tagB"
 	tagC := "tagC"
 	tagZ := "tagZ"
 
-	tree := NewTreeV6()
+	tree := NewTreeV6[string]()
 	assert.Equal(t, 1, tree.countNodes(1))
 	tree.Add(patricia.IPv6Address{}, tagZ, nil) // default
 	assert.Equal(t, 1, tree.countNodes(1))
@@ -357,9 +357,9 @@ func TestDelete1V6(t *testing.T) {
 
 // test duplicate tags with no match func
 func TestDuplicateTagsWithNoMatchFuncV6(t *testing.T) {
-	matchFunc := MatchesFunc(nil)
+	matchFunc := MatchesFunc[string](nil)
 
-	tree := NewTreeV6()
+	tree := NewTreeV6[string]()
 
 	wasAdded, count := tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128), "FOO", matchFunc)
 	assert.True(t, wasAdded)
@@ -382,11 +382,11 @@ func TestDuplicateTagsWithNoMatchFuncV6(t *testing.T) {
 
 // test duplicate tags with match func that always returns false
 func TestDuplicateTagsWithFalseMatchFuncV6(t *testing.T) {
-	matchFunc := func(val1 GeneratedType, val2 GeneratedType) bool {
+	matchFunc := func(val1 string, val2 string) bool {
 		return false
 	}
 
-	tree := NewTreeV6()
+	tree := NewTreeV6[string]()
 
 	wasAdded, count := tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128), "FOO", matchFunc)
 	assert.True(t, wasAdded)
@@ -409,11 +409,11 @@ func TestDuplicateTagsWithFalseMatchFuncV6(t *testing.T) {
 
 // test duplicate tags with match func that does something
 func TestDuplicateTagsWithMatchFuncV6(t *testing.T) {
-	matchFunc := func(val1 GeneratedType, val2 GeneratedType) bool {
+	matchFunc := func(val1 string, val2 string) bool {
 		return val1 == val2
 	}
 
-	tree := NewTreeV6()
+	tree := NewTreeV6[string]()
 
 	wasAdded, count := tree.Add(ipv6FromString("2001:db8:0:0:0:0:2:1/128", 128), "FOO", matchFunc)
 	assert.True(t, wasAdded)
@@ -436,7 +436,7 @@ func TestDuplicateTagsWithMatchFuncV6(t *testing.T) {
 
 // test tree traversal
 func TestIterateV6(t *testing.T) {
-	tree := NewTreeV6()
+	tree := NewTreeV6[string]()
 
 	// try an empty tree first
 	iter := tree.Iterate()
@@ -467,7 +467,7 @@ func TestIterateV6(t *testing.T) {
 	for iter.Next() {
 		tags := []string{}
 		for _, s := range iter.Tags() { //nolint:gosimple
-			tags = append(tags, s.(string))
+			tags = append(tags, s)
 		}
 		got[iter.Address().String()] = tags
 	}
