@@ -396,18 +396,25 @@ func (t *TreeV6) DeleteWithBuffer(buf []int64, address patricia.IPv6Address, mat
 		// target node still has tags - we're not deleting it
 		return deleteCount
 	}
+	t.deleteNode(targetNodeIndex, targetNode, parentIndex, parent)
+	return deleteCount
+}
 
+// deleteNode removes the provided node and compact the tree.
+func (t *TreeV6) deleteNode(targetNodeIndex uint, targetNode *treeNodeV6, parentIndex uint, parent *treeNodeV6) (result deleteNodeResult) {
+	result = notDeleted
 	if targetNodeIndex == 1 {
 		// can't delete the root node
-		return deleteCount
+		return result
 	}
 
 	// compact the tree, if possible
 	if targetNode.Left != 0 && targetNode.Right != 0 {
 		// target has two children - nothing we can do - not deleting the node
-		return deleteCount
+		return result
 	} else if targetNode.Left != 0 {
 		// target node only has only left child
+		result = deletedNodeReplacedByChild
 		if parent.Left == targetNodeIndex {
 			parent.Left = targetNode.Left
 		} else {
@@ -419,6 +426,7 @@ func (t *TreeV6) DeleteWithBuffer(buf []int64, address patricia.IPv6Address, mat
 		tmpNode.MergeFromNodes(targetNode, tmpNode)
 	} else if targetNode.Right != 0 {
 		// target node has only right child
+		result = deletedNodeReplacedByChild
 		if parent.Left == targetNodeIndex {
 			parent.Left = targetNode.Right
 		} else {
@@ -430,10 +438,12 @@ func (t *TreeV6) DeleteWithBuffer(buf []int64, address patricia.IPv6Address, mat
 		tmpNode.MergeFromNodes(targetNode, tmpNode)
 	} else {
 		// target node has no children - straight-up remove this node
+		result = deletedNodeJustRemoved
 		if parent.Left == targetNodeIndex {
 			parent.Left = 0
 			if parentIndex > 1 && parent.TagCount == 0 && parent.Right != 0 {
 				// parent isn't root, has no tags, and there's a sibling - merge sibling into parent
+				result = deletedNodeParentReplacedBySibling
 				siblingIndexToDelete := parent.Right
 				tmpNode := &t.nodes[siblingIndexToDelete]
 				parent.MergeFromNodes(parent, tmpNode)
@@ -451,6 +461,7 @@ func (t *TreeV6) DeleteWithBuffer(buf []int64, address patricia.IPv6Address, mat
 			parent.Right = 0
 			if parentIndex > 1 && parent.TagCount == 0 && parent.Left != 0 {
 				// parent isn't root, has no tags, and there's a sibling - merge sibling into parent
+				result = deletedNodeParentReplacedBySibling
 				siblingIndexToDelete := parent.Left
 				tmpNode := &t.nodes[siblingIndexToDelete]
 				parent.MergeFromNodes(parent, tmpNode)
@@ -470,7 +481,7 @@ func (t *TreeV6) DeleteWithBuffer(buf []int64, address patricia.IPv6Address, mat
 	targetNode.Left = 0
 	targetNode.Right = 0
 	t.availableIndexes = append(t.availableIndexes, targetNodeIndex)
-	return deleteCount
+	return result
 }
 
 // FindTagsWithFilter finds all matching tags that passes the filter function
@@ -740,11 +751,77 @@ func (iter *TreeIteratorV6) Next() bool {
 	}
 }
 
-// Tags return the current tags for the iterator. This is not a copy
+// Tags returns the current tags for the iterator. This is not a copy
 // and the result should not be used outside the iterator.
 func (iter *TreeIteratorV6) Tags() []int64 {
-	tags := iter.t.tagsForNode(make([]int64, 0), uint(iter.nodeIndex), nil)
-	return tags
+	return iter.TagsWithBuffer(nil)
+}
+
+// TagsWithBuffer returns the current tags for the iterator. To avoid
+// allocation, it uses the provided buffer.
+func (iter *TreeIteratorV6) TagsWithBuffer(ret []int64) []int64 {
+	return iter.t.tagsForNode(ret, uint(iter.nodeIndex), nil)
+}
+
+// Delete a tag from the current node if it matches matchVal, as
+// determined by matchFunc. Returns how many tags are removed
+// - use DeleteWithBuffer if you can reuse slices, to cut down on allocations
+func (iter *TreeIteratorV6) Delete(matchFunc MatchesFunc, matchVal int64) int {
+	return iter.DeleteWithBuffer(nil, matchFunc, matchVal)
+}
+
+// DeleteWithBuffer a tag from the current node if it matches
+// matchVal, as determined by matchFunc. Returns how many tags are
+// removed
+// - uses input slice to reduce allocations
+func (iter *TreeIteratorV6) DeleteWithBuffer(buf []int64, matchFunc MatchesFunc, matchVal int64) int {
+	deleteCount, remainingTagCount := iter.t.deleteTag(buf, iter.nodeIndex, matchVal, matchFunc)
+	if remainingTagCount > 0 || iter.nodeIndex == 1 {
+		return deleteCount
+	}
+	nodeHistoryLen := len(iter.nodeHistory)
+	currentIndex := iter.nodeIndex
+	current := &iter.t.nodes[currentIndex]
+	parentIndex := iter.nodeHistory[nodeHistoryLen-1]
+	parent := &iter.t.nodes[parentIndex]
+	wasLeft := false
+	if parent.Left == currentIndex {
+		wasLeft = true
+	}
+	result := iter.t.deleteNode(currentIndex, current, parentIndex, parent)
+	switch result {
+	case notDeleted:
+		return deleteCount
+	case deletedNodeReplacedByChild:
+		// Continue with the child
+		if wasLeft {
+			iter.nodeIndex = parent.Left
+		} else {
+			iter.nodeIndex = parent.Right
+		}
+		iter.next = nextSelf
+	case deletedNodeParentReplacedBySibling:
+		iter.nodeIndex = parentIndex
+		iter.nodeHistory = iter.nodeHistory[:nodeHistoryLen-1]
+		if wasLeft {
+			// Parent replaced by right sibling, to visit
+			iter.next = nextSelf
+		} else {
+			// Parent replaced by left sibling, already visited
+			iter.next = nextUp
+		}
+	case deletedNodeJustRemoved:
+		iter.nodeIndex = parentIndex
+		iter.nodeHistory = iter.nodeHistory[:nodeHistoryLen-1]
+		if wasLeft {
+			// Visit our sibling
+			iter.next = nextRight
+		} else {
+			// Go up
+			iter.next = nextUp
+		}
+	}
+	return deleteCount
 }
 
 // note: this is only used for unit testing

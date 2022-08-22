@@ -1299,3 +1299,185 @@ func TestIterateV4(t *testing.T) {
 	}
 	assert.Equal(t, expected, got)
 }
+
+// test deletion during tree traversal
+func TestIterateAndDeleteV4(t *testing.T) {
+	tree := NewTreeV4()
+
+	compare := func(expected [][]string) {
+		t.Helper()
+		got := [][]string{}
+		iter := tree.Iterate()
+		for iter.Next() {
+			tags := []string{}
+			for _, s := range iter.Tags() { //nolint:gosimple
+				tags = append(tags, s.(string))
+			}
+			got = append(got, append([]string{iter.Address().String()}, tags...))
+		}
+		assert.Equal(t, expected, got)
+	}
+
+	ipA := ipv4FromBytes([]byte{203, 143, 220, 0}, 23)
+	ipB := ipv4FromBytes([]byte{203, 143, 220, 198}, 31)
+	ipC := ipv4FromBytes([]byte{203, 143, 0, 0}, 16)
+	ipD := ipv4FromBytes([]byte{203, 143, 221, 75}, 32)
+	ipE := ipv4FromBytes([]byte{203, 143, 220, 198}, 32)
+
+	tree.Add(ipA, "A", nil)
+	tree.Add(ipB, "B", nil)
+	tree.Add(ipC, "C", nil)
+	tree.Add(ipD, "D1", nil)
+	tree.Add(ipD, "D2", nil)
+	compare([][]string{
+		{"203.143.0.0/16", "C"},
+		{"203.143.220.0/23", "A"},
+		{"203.143.220.198/31", "B"},
+		{"203.143.221.75/32", "D1", "D2"},
+	})
+
+	// Delete one tag, no node
+	iter := tree.Iterate()
+	for iter.Next() {
+		iter.Delete(func(payload, val GeneratedType) bool {
+			return payload == "D1"
+		}, "")
+	}
+	compare([][]string{
+		{"203.143.0.0/16", "C"},
+		{"203.143.220.0/23", "A"},
+		{"203.143.220.198/31", "B"},
+		{"203.143.221.75/32", "D2"},
+	})
+
+	// Delete a node with two children
+	iter = tree.Iterate()
+	for iter.Next() {
+		iter.Delete(func(payload, val GeneratedType) bool {
+			return payload == "A"
+		}, "")
+	}
+	compare([][]string{
+		{"203.143.0.0/16", "C"},
+		{"203.143.220.198/31", "B"},
+		{"203.143.221.75/32", "D2"},
+	})
+
+	// Delete right children of a node two children
+	iter = tree.Iterate()
+	for iter.Next() {
+		iter.Delete(func(payload, val GeneratedType) bool {
+			return payload == "D2"
+		}, "")
+	}
+	compare([][]string{
+		{"203.143.0.0/16", "C"},
+		{"203.143.220.198/31", "B"},
+	})
+
+	// Delete leaf
+	iter = tree.Iterate()
+	for iter.Next() {
+		iter.Delete(func(payload, val GeneratedType) bool {
+			return payload == "B"
+		}, "")
+	}
+	compare([][]string{
+		{"203.143.0.0/16", "C"},
+	})
+
+	// Delete root
+	iter = tree.Iterate()
+	for iter.Next() {
+		iter.Delete(func(payload, val GeneratedType) bool {
+			return payload == "C"
+		}, "")
+	}
+	compare([][]string{})
+
+	// Delete a node with a left children only
+	tree = NewTreeV4()
+	tree.Add(ipA, "A", nil)
+	tree.Add(ipB, "B", nil)
+	tree.Add(ipC, "C", nil)
+	iter = tree.Iterate()
+	for iter.Next() {
+		iter.Delete(func(payload, val GeneratedType) bool {
+			return payload == "A"
+		}, "")
+	}
+	compare([][]string{
+		{"203.143.0.0/16", "C"},
+		{"203.143.220.198/31", "B"},
+	})
+
+	// Delete a node with a right children only
+	tree = NewTreeV4()
+	tree.Add(ipA, "A", nil)
+	tree.Add(ipC, "C", nil)
+	tree.Add(ipD, "D", nil)
+	iter = tree.Iterate()
+	for iter.Next() {
+		iter.Delete(func(payload, val GeneratedType) bool {
+			return payload == "A"
+		}, "")
+	}
+	compare([][]string{
+		{"203.143.0.0/16", "C"},
+		{"203.143.221.75/32", "D"},
+	})
+
+	// Delete a node without children and at the left of its empty parent
+	tree = NewTreeV4()
+	tree.Add(ipB, "B", nil)
+	tree.Add(ipC, "C", nil)
+	tree.Add(ipD, "D", nil)
+	iter = tree.Iterate()
+	for iter.Next() {
+		iter.Delete(func(payload, val GeneratedType) bool {
+			return payload == "B"
+		}, "")
+	}
+	compare([][]string{
+		{"203.143.0.0/16", "C"},
+		{"203.143.221.75/32", "D"},
+	})
+
+	// Delete left node while a right node is present
+	tree = NewTreeV4()
+	tree.Add(ipA, "A", nil)
+	tree.Add(ipB, "B", nil)
+	tree.Add(ipC, "C", nil)
+	tree.Add(ipD, "D", nil)
+	iter = tree.Iterate()
+	for iter.Next() {
+		iter.Delete(func(payload, val GeneratedType) bool {
+			return payload == "B"
+		}, "")
+	}
+	compare([][]string{
+		{"203.143.0.0/16", "C"},
+		{"203.143.220.0/23", "A"},
+		{"203.143.221.75/32", "D"},
+	})
+
+	// Delete left node with a child
+	tree = NewTreeV4()
+	tree.Add(ipA, "A", nil)
+	tree.Add(ipB, "B", nil)
+	tree.Add(ipC, "C", nil)
+	tree.Add(ipD, "D", nil)
+	tree.Add(ipE, "E", nil)
+	iter = tree.Iterate()
+	for iter.Next() {
+		iter.Delete(func(payload, val GeneratedType) bool {
+			return payload == "B"
+		}, "")
+	}
+	compare([][]string{
+		{"203.143.0.0/16", "C"},
+		{"203.143.220.0/23", "A"},
+		{"203.143.220.198/32", "E"},
+		{"203.143.221.75/32", "D"},
+	})
+}
