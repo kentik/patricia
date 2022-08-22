@@ -10,6 +10,9 @@ type MatchesFunc func(payload GeneratedType, val GeneratedType) bool
 // FilterFunc is called on each result to see if it belongs in the resulting set
 type FilterFunc func(payload GeneratedType) bool
 
+// UpdatesFunc is called to update the tag value
+type UpdatesFunc func(payload GeneratedType) GeneratedType
+
 // treeIteratorNext is an indicator to know what Next() should return
 // for the current node.
 type treeIteratorNext int

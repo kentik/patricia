@@ -51,34 +51,27 @@ func (t *TreeV4) CountTags() int {
 	return ret
 }
 
-// add a tag to the node at the input index, storing it in the first position if 'replaceFirst' is true
-// - if matchFunc is non-nil, will enforce uniqueness at this node
+// add a tag to the node at the input index
+// - if matchFunc is non-nil, it is used to determine equality (if nil, no existing tag match)
+// - if udpateFunc is non-nil, it is used to update the tag if it already exists (if nil, the provided tag is used)
 // - returns whether the tag count was increased
-func (t *TreeV4) addTag(tag string, nodeIndex uint, matchFunc MatchesFunc, replaceFirst bool) bool {
-	ret := true
-	if replaceFirst {
-		if t.nodes[nodeIndex].TagCount == 0 {
-			t.nodes[nodeIndex].TagCount = 1
-		} else {
-			ret = false
-		}
-		t.tags[(uint64(nodeIndex) << 32)] = tag
-	} else {
-		key := (uint64(nodeIndex) << 32)
-		tagCount := t.nodes[nodeIndex].TagCount
-		if matchFunc != nil {
-			// need to check if this value already exists
-			for i := 0; i < tagCount; i++ {
-				if matchFunc(t.tags[key+uint64(i)], tag) {
-					return false
+func (t *TreeV4) addTag(tag string, nodeIndex uint, matchFunc MatchesFunc, updateFunc UpdatesFunc) bool {
+	key := (uint64(nodeIndex) << 32)
+	tagCount := t.nodes[nodeIndex].TagCount
+	if matchFunc != nil {
+		// need to check if this value already exists
+		for i := 0; i < tagCount; i++ {
+			if matchFunc(t.tags[key+uint64(i)], tag) {
+				if updateFunc != nil {
+					t.tags[key+(uint64(i))] = updateFunc(t.tags[key+(uint64(i))])
 				}
+				return false
 			}
 		}
-		t.tags[key+(uint64(tagCount))] = tag
-		t.nodes[nodeIndex].TagCount++
-
 	}
-	return ret
+	t.tags[key+(uint64(tagCount))] = tag
+	t.nodes[nodeIndex].TagCount++
+	return true
 }
 
 // return the tags at the input node index - appending to the input slice if they pass the optional filter func
@@ -142,7 +135,7 @@ func (t *TreeV4) deleteTag(buf []string, nodeIndex uint, matchTag string, matchF
 			deleteCount++
 		} else {
 			// doesn't match - get to keep it
-			t.addTag(tag, nodeIndex, matchFunc, false)
+			t.addTag(tag, nodeIndex, matchFunc, nil)
 			keepCount++
 		}
 	}
@@ -152,20 +145,37 @@ func (t *TreeV4) deleteTag(buf []string, nodeIndex uint, matchTag string, matchF
 // Set the single value for a node - overwrites what's there
 // Returns whether the tag count at this address was increased, and how many tags at this address
 func (t *TreeV4) Set(address patricia.IPv4Address, tag string) (bool, int) {
-	return t.add(address, tag, nil, true)
+	return t.add(address, tag,
+		func(string, string) bool { return true },
+		func(string) string { return tag })
 }
 
 // Add adds a tag to the tree
 // - if matchFunc is non-nil, it will be used to ensure uniqueness at this node
 // - returns whether the tag count at this address was increased, and how many tags at this address
 func (t *TreeV4) Add(address patricia.IPv4Address, tag string, matchFunc MatchesFunc) (bool, int) {
-	return t.add(address, tag, matchFunc, false)
+	return t.add(address, tag, matchFunc, nil)
 }
 
-// add a tag to the tree, optionally as the single value
-// - overwrites the first value in the list if 'replaceFirst' is true
+// SetOrUpdate the single value for a node - overwrites what's there using updateFunc if present
+// - returns whether the tag count at this address was increased, and how many tags at this address
+func (t *TreeV4) SetOrUpdate(address patricia.IPv4Address, tag string, updateFunc UpdatesFunc) (bool, int) {
+	return t.add(address, tag,
+		func(string, string) bool { return true },
+		updateFunc)
+}
+
+// AddOrUpdate adds a tag to the tree or update it if it already exists
+// - if matchFunc is non-nil, it will be used to ensure uniqueness at this node
+// - returns whether the tag count at this address was increased, and how many tags at this address
+func (t *TreeV4) AddOrUpdate(address patricia.IPv4Address, tag string, matchFunc MatchesFunc, updateFunc UpdatesFunc) (bool, int) {
+	return t.add(address, tag, matchFunc, updateFunc)
+}
+
+// add a tag to the tree, optionally updating the existing value
+// - overwrites the first value in the list if updateFunc function is provided (tag is ignored in this case)
 // - returns whether the tag count was increased, and the number of tags at this address
-func (t *TreeV4) add(address patricia.IPv4Address, tag string, matchFunc MatchesFunc, replaceFirst bool) (bool, int) {
+func (t *TreeV4) add(address patricia.IPv4Address, tag string, matchFunc MatchesFunc, updateFunc UpdatesFunc) (bool, int) {
 	// make sure we have more than enough capacity before we start adding to the tree, which invalidates pointers into the array
 	if (len(t.availableIndexes) + cap(t.nodes)) < (len(t.nodes) + 10) {
 		temp := make([]treeNodeV4, len(t.nodes), (cap(t.nodes)+1)*2)
@@ -177,7 +187,7 @@ func (t *TreeV4) add(address patricia.IPv4Address, tag string, matchFunc Matches
 
 	// handle root tags
 	if address.Length == 0 {
-		countIncreased := t.addTag(tag, 1, matchFunc, replaceFirst)
+		countIncreased := t.addTag(tag, 1, matchFunc, updateFunc)
 		return countIncreased, t.nodes[1].TagCount
 	}
 
@@ -187,7 +197,7 @@ func (t *TreeV4) add(address patricia.IPv4Address, tag string, matchFunc Matches
 	if !address.IsLeftBitSet() {
 		if root.Left == 0 {
 			newNodeIndex := t.newNode(address, address.Length)
-			countIncreased := t.addTag(tag, newNodeIndex, matchFunc, replaceFirst)
+			countIncreased := t.addTag(tag, newNodeIndex, matchFunc, updateFunc)
 			root.Left = newNodeIndex
 			return countIncreased, t.nodes[newNodeIndex].TagCount
 		}
@@ -195,7 +205,7 @@ func (t *TreeV4) add(address patricia.IPv4Address, tag string, matchFunc Matches
 	} else {
 		if root.Right == 0 {
 			newNodeIndex := t.newNode(address, address.Length)
-			countIncreased := t.addTag(tag, newNodeIndex, matchFunc, replaceFirst)
+			countIncreased := t.addTag(tag, newNodeIndex, matchFunc, updateFunc)
 			root.Right = newNodeIndex
 			return countIncreased, t.nodes[newNodeIndex].TagCount
 		}
@@ -221,14 +231,14 @@ func (t *TreeV4) add(address patricia.IPv4Address, tag string, matchFunc Matches
 
 			if matchCount == node.prefixLength {
 				// the whole prefix matched - we're done!
-				countIncreased := t.addTag(tag, nodeIndex, matchFunc, replaceFirst)
+				countIncreased := t.addTag(tag, nodeIndex, matchFunc, updateFunc)
 				return countIncreased, t.nodes[nodeIndex].TagCount
 			}
 
 			// the input address is shorter than the match found - need to create a new, intermediate parent
 			newNodeIndex := t.newNode(address, address.Length)
 			newNode := &t.nodes[newNodeIndex]
-			countIncreased := t.addTag(tag, newNodeIndex, matchFunc, replaceFirst)
+			countIncreased := t.addTag(tag, newNodeIndex, matchFunc, updateFunc)
 
 			// the existing node loses those matching bits, and becomes a child of the new node
 
@@ -263,7 +273,7 @@ func (t *TreeV4) add(address patricia.IPv4Address, tag string, matchFunc Matches
 				if node.Left == 0 {
 					// nowhere else to go - create a new node here
 					newNodeIndex := t.newNode(address, address.Length)
-					countIncreased := t.addTag(tag, newNodeIndex, matchFunc, replaceFirst)
+					countIncreased := t.addTag(tag, newNodeIndex, matchFunc, updateFunc)
 					node.Left = newNodeIndex
 					return countIncreased, t.nodes[newNodeIndex].TagCount
 				}
@@ -278,7 +288,7 @@ func (t *TreeV4) add(address patricia.IPv4Address, tag string, matchFunc Matches
 			if node.Right == 0 {
 				// nowhere else to go - create a new node here
 				newNodeIndex := t.newNode(address, address.Length)
-				countIncreased := t.addTag(tag, newNodeIndex, matchFunc, replaceFirst)
+				countIncreased := t.addTag(tag, newNodeIndex, matchFunc, updateFunc)
 				node.Right = newNodeIndex
 				return countIncreased, t.nodes[newNodeIndex].TagCount
 			}
@@ -297,7 +307,7 @@ func (t *TreeV4) add(address patricia.IPv4Address, tag string, matchFunc Matches
 		address.ShiftLeft(matchCount)
 
 		newNodeIndex := t.newNode(address, address.Length)
-		countIncreased := t.addTag(tag, newNodeIndex, matchFunc, replaceFirst)
+		countIncreased := t.addTag(tag, newNodeIndex, matchFunc, updateFunc)
 
 		// see where the existing node fits - left or right
 		node.ShiftPrefix(matchCount)
@@ -748,7 +758,7 @@ func (iter *TreeIteratorV4) Tags() []string {
 }
 
 // note: this is only used for unit testing
-//nolint
+// nolint
 func (t *TreeV4) countNodes(nodeIndex uint) int {
 	nodeCount := 1
 
@@ -763,7 +773,7 @@ func (t *TreeV4) countNodes(nodeIndex uint) int {
 }
 
 // note: this is only used for unit testing
-//nolint
+// nolint
 func (t *TreeV4) countTags(nodeIndex uint) int {
 	node := &t.nodes[nodeIndex]
 

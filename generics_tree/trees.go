@@ -10,6 +10,9 @@ type MatchesFunc[T any] func(payload T, val T) bool
 // FilterFunc[T] is called on each result to see if it belongs in the resulting set
 type FilterFunc[T any] func(payload T) bool
 
+// UpdatesFunc[T] is called to update the tag value
+type UpdatesFunc[T any] func(payload T) T
+
 // treeIteratorNext is an indicator to know what Next() should return
 // for the current node.
 type treeIteratorNext int
