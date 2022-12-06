@@ -52,7 +52,7 @@ jobs:
         with:
           go-version: 1.18
       - name: Calc coverage
-        run: go test -covermode=count -coverprofile=coverage.out
+        run: go test -covermode=count -coverprofile=coverage.out . ./template ./generics_tree
       - name: Convert coverage.out to coverage.lcov
         uses: jandelgado/gcov2lcov-action@v1.0.6
       - name: Coveralls
