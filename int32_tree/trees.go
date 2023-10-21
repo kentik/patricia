@@ -20,3 +20,13 @@ const (
 	nextRight
 	nextUp
 )
+
+// deleteNodeResult is the return type for deleteNode() function
+type deleteNodeResult int
+
+const (
+	notDeleted deleteNodeResult = iota
+	deletedNodeReplacedByChild
+	deletedNodeParentReplacedBySibling
+	deletedNodeJustRemoved
+)

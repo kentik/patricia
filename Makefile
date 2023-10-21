@@ -28,6 +28,7 @@ generics: codegen-generics
 	# Each defined type should be parametrized with T
 	( cd generics_tree && $(SED) -nE 's/^type (\w+).*/\1/p' *.go \
 	        | grep -vFx treeIteratorNext \
+	        | grep -vFx deleteNodeResult \
 		| while read T; do \
 			$(SED) -i -E -e 's/\b'$$T'\b/\0[T]/g' *.go ; \
 			$(SED) -i -E -e 's/\b('$$T')\[T\]/\1[string]/g' *_test.go ; \
