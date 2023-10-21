@@ -635,7 +635,7 @@ func (t *TreeV6) FindDeepestTags(address patricia.IPv6Address) (bool, []bool) {
 
 // FindDeepestTagsWithFilter finds all tags at the deepest level in the tree, matching the provided filter, representing the closest match
 // - use FindDeepestTagsWithFilterAppend if you can reuse slices, to cut down on allocations
-// - returns true regardless of the result of the filtering function
+// - returns true unless the tree is empty, even if the results are filtered out
 func (t *TreeV6) FindDeepestTagsWithFilter(address patricia.IPv6Address, filterFunc FilterFunc) (bool, []bool) {
 	ret := make([]bool, 0)
 	return t.FindDeepestTagsWithFilterAppend(ret, address, filterFunc)
@@ -649,7 +649,7 @@ func (t *TreeV6) FindDeepestTagsAppend(ret []bool, address patricia.IPv6Address)
 
 // FindDeepestTagsWithFilterAppend finds all tags at the deepest level in the tree, matching the provided filter, representing the closest match
 // - appends results to the input slice
-// - returns true regardless of the result of the filtering function
+// - returns true unless the tree is empty, even if the results are filtered out
 func (t *TreeV6) FindDeepestTagsWithFilterAppend(ret []bool, address patricia.IPv6Address, filterFunc FilterFunc) (bool, []bool) {
 	root := &t.nodes[1]
 	var found bool
