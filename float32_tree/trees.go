@@ -10,6 +10,9 @@ type MatchesFunc func(payload float32, val float32) bool
 // FilterFunc is called on each result to see if it belongs in the resulting set
 type FilterFunc func(payload float32) bool
 
+// UpdatesFunc is called to update the tag value
+type UpdatesFunc func(payload float32) float32
+
 // treeIteratorNext is an indicator to know what Next() should return
 // for the current node.
 type treeIteratorNext int

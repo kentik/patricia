@@ -1008,6 +1008,127 @@ func TestSet(t *testing.T) {
 	assert.Equal(t, "parent", tag)
 }
 
+func TestSetOrUpdate(t *testing.T) {
+	buf := make([]string, 0)
+
+	address := ipv4FromBytes([]byte{1, 2, 3, 4}, 32)
+
+	tree := NewTreeV4[string]()
+
+	// add a parent node, just to mix things up
+	countIncreased, count := tree.Set(ipv4FromBytes([]byte{1, 2, 3, 0}, 24), "parent")
+	assert.True(t, countIncreased)
+	assert.Equal(t, 1, count)
+
+	countIncreased, count = tree.SetOrUpdate(address, "tagA",
+		func(string) string { return "tagZ" })
+	assert.True(t, countIncreased)
+	assert.Equal(t, 1, count)
+	found, tag := tree.FindDeepestTag(address)
+	assert.True(t, found)
+	assert.Equal(t, "tagA", tag)
+
+	countIncreased, count = tree.SetOrUpdate(address, "tagZ",
+		func(old string) string { return old + "B" })
+	assert.Equal(t, 1, count)
+	assert.False(t, countIncreased)
+	found, tag = tree.FindDeepestTag(address)
+	assert.True(t, found)
+	assert.Equal(t, "tagAB", tag)
+
+	countIncreased, count = tree.SetOrUpdate(address, "tagZ",
+		func(old string) string { return old + "C" })
+	assert.Equal(t, 1, count)
+	assert.False(t, countIncreased)
+	found, tag = tree.FindDeepestTag(address)
+	assert.True(t, found)
+	assert.Equal(t, "tagABC", tag)
+
+	countIncreased, count = tree.SetOrUpdate(address, "tagZ",
+		func(old string) string { return old + "D" })
+	assert.Equal(t, 1, count)
+	assert.False(t, countIncreased)
+	found, tag = tree.FindDeepestTag(address)
+	assert.True(t, found)
+	assert.Equal(t, "tagABCD", tag)
+
+	// now delete the tag
+	delCount := tree.DeleteWithBuffer(buf, address, func(a string, b string) bool { return true }, "")
+	assert.Equal(t, 1, delCount)
+
+	// verify it's gone - should get the parent
+	found, tag = tree.FindDeepestTag(address)
+	assert.True(t, found)
+	assert.Equal(t, "parent", tag)
+}
+
+func TestAddOrUpdate(t *testing.T) {
+	buf := make([]string, 0)
+
+	address := ipv4FromBytes([]byte{1, 2, 3, 4}, 32)
+
+	tree := NewTreeV4[string]()
+
+	// add a parent node, just to mix things up
+	countIncreased, count := tree.Set(ipv4FromBytes([]byte{1, 2, 3, 0}, 24), "parent")
+	assert.True(t, countIncreased)
+	assert.Equal(t, 1, count)
+
+	countIncreased, count = tree.AddOrUpdate(address, "tagA",
+		nil,
+		func(string) string { return "tagZ" })
+	assert.True(t, countIncreased)
+	assert.Equal(t, 1, count)
+	found, tag := tree.FindDeepestTag(address)
+	assert.True(t, found)
+	assert.Equal(t, "tagA", tag)
+
+	countIncreased, count = tree.AddOrUpdate(address, "tagZ",
+		func(string, string) bool { return true },
+		func(old string) string { return old + "B" })
+	assert.Equal(t, 1, count)
+	assert.False(t, countIncreased)
+	found, tag = tree.FindDeepestTag(address)
+	assert.True(t, found)
+	assert.Equal(t, "tagAB", tag)
+
+	countIncreased, count = tree.AddOrUpdate(address, "tagAB",
+		func(val1 string, val2 string) bool { return val1 == val2 },
+		func(old string) string { return old + "C" })
+	assert.Equal(t, 1, count)
+	assert.False(t, countIncreased)
+	found, tag = tree.FindDeepestTag(address)
+	assert.True(t, found)
+	assert.Equal(t, "tagABC", tag)
+
+	countIncreased, count = tree.AddOrUpdate(address, "tagABCD",
+		func(val1 string, val2 string) bool { return val1 == val2 },
+		func(old string) string { return old + "Z" })
+	assert.Equal(t, 2, count)
+	assert.True(t, countIncreased)
+	found, tags := tree.FindDeepestTags(address)
+	assert.True(t, found)
+	assert.True(t, tagArraysEqual(tags, []string{"tagABC", "tagABCD"}))
+
+	countIncreased, count = tree.AddOrUpdate(address, "tagABC",
+		func(val1 string, val2 string) bool { return val1 == val2 },
+		func(old string) string { return old + "DE" })
+	assert.Equal(t, 2, count)
+	assert.False(t, countIncreased)
+	found, tags = tree.FindDeepestTags(address)
+	assert.True(t, found)
+	assert.True(t, tagArraysEqual(tags, []string{"tagABCDE", "tagABCD"}))
+
+	// now delete the tag
+	delCount := tree.DeleteWithBuffer(buf, address, func(a string, b string) bool { return true }, "")
+	assert.Equal(t, 2, delCount)
+
+	// verify it's gone - should get the parent
+	found, tag = tree.FindDeepestTag(address)
+	assert.True(t, found)
+	assert.Equal(t, "parent", tag)
+}
+
 func TestDelete1(t *testing.T) {
 	tags := make([]string, 0)
 
@@ -1155,10 +1276,10 @@ func TestTagsMap(t *testing.T) {
 	tree := NewTreeV4[string]()
 
 	// insert tags
-	tree.addTag("tagA", 1, nil, false)
-	tree.addTag("tagB", 1, nil, false)
-	tree.addTag("tagC", 1, nil, false)
-	tree.addTag("tagD", 0, nil, false) // there's no node0, but it exists, so use it for this test
+	tree.addTag("tagA", 1, nil, nil)
+	tree.addTag("tagB", 1, nil, nil)
+	tree.addTag("tagC", 1, nil, nil)
+	tree.addTag("tagD", 0, nil, nil) // there's no node0, but it exists, so use it for this test
 
 	// verify
 	assert.Equal(t, 3, tree.nodes[1].TagCount)
