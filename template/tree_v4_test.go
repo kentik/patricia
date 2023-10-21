@@ -371,6 +371,17 @@ func TestFindDeepestTags(t *testing.T) {
 	assert.Equal("bar", tags[1])
 	assert.Equal(2, len(tags))
 
+	v4, _, _ = patricia.ParseIPFromString("1.2.3.5")
+	found, tags = tree.FindDeepestTagsWithFilter(*v4, func(t GeneratedType) bool { return t.(string) == "foo" })
+	assert.True(found)
+	assert.Equal("foo", tags[0])
+	assert.Equal(1, len(tags))
+
+	v4, _, _ = patricia.ParseIPFromString("1.2.3.5")
+	found, tags = tree.FindDeepestTagsWithFilter(*v4, func(t GeneratedType) bool { return t.(string) == "nothing" })
+	assert.True(found)
+	assert.Equal(0, len(tags))
+
 	// test searching for an address that has nothing
 	v4, _, _ = patricia.ParseIPFromString("9.9.9.9")
 	found, tags = tree.FindDeepestTags(*v4)
