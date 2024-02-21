@@ -1415,9 +1415,9 @@ func TestIterateV4(t *testing.T) {
 	tree.Add(ipD, "D2", nil)
 
 	expected := map[string][]string{
+		"203.143.0.0/16":     {"C"},
 		"203.143.220.0/23":   {"A"},
 		"203.143.220.198/32": {"B"},
-		"203.143.0.0/16":     {"C"},
 		"203.143.221.75/32":  {"D1", "D2"},
 	}
 	got := map[string][]string{}
@@ -1430,6 +1430,27 @@ func TestIterateV4(t *testing.T) {
 		got[iter.Address().String()] = tags
 	}
 	assert.Equal(t, expected, got)
+
+	expectedFromRoot := map[string][][]string{
+		"203.143.220.0/23":   {{}, {"C"}, {"A"}},
+		"203.143.220.198/32": {{}, {"C"}, {"A"}, {"B"}},
+		"203.143.0.0/16":     {{}, {"C"}},
+		"203.143.221.75/32":  {{}, {"C"}, {"A"}, {"D1", "D2"}},
+	}
+	gotFromRoot := map[string][][]string{}
+	iter = tree.Iterate()
+	for iter.Next() {
+		tags := iter.TagsFromRoot()
+		tagsValues := make([][]string, len(tags))
+		for i, tagList := range tags { //nolint:gosimple
+			tagsValues[i] = []string{}
+			for _, t := range tagList {
+				tagsValues[i] = append(tagsValues[i], t.(string))
+			}
+		}
+		gotFromRoot[iter.Address().String()] = tagsValues
+	}
+	assert.Equal(t, expectedFromRoot, gotFromRoot)
 }
 
 // test deletion during tree traversal
