@@ -472,4 +472,25 @@ func TestIterateV6(t *testing.T) {
 		got[iter.Address().String()] = tags
 	}
 	assert.Equal(t, expected, got)
+
+	expectedFromRoot := map[string][][]string{
+		"2001:db8::cb8f:dc00/119": {{}, {"C"}, {"A"}},
+		"2001:db8::cb8f:dcc6/128": {{}, {"C"}, {"A"}, {"B"}},
+		"2001:db8::cb8f:0/112":    {{}, {"C"}},
+		"2001:db8::cb8f:dd4b/128": {{}, {"C"}, {"A"}, {"D1", "D2"}},
+	}
+	gotFromRoot := map[string][][]string{}
+	iter = tree.Iterate()
+	for iter.Next() {
+		tags := iter.TagsFromRoot()
+		tagsValues := make([][]string, len(tags))
+		for i, tagList := range tags { //nolint:gosimple
+			tagsValues[i] = []string{}
+			for _, t := range tagList {
+				tagsValues[i] = append(tagsValues[i], t.(string))
+			}
+		}
+		gotFromRoot[iter.Address().String()] = tagsValues
+	}
+	assert.Equal(t, expectedFromRoot, gotFromRoot)
 }
