@@ -2,6 +2,7 @@ package patricia
 
 import (
 	"net"
+	"net/netip"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -147,4 +148,51 @@ func TestParseIPFromString(t *testing.T) {
 	assert.Equal(t, uint(128), v6IP.Length)
 	assert.Equal(t, uint64(0x0000000000000000), v6IP.Left)
 	assert.Equal(t, uint64(0x0000ffff0a0a0a0a), v6IP.Right)
+
+}
+
+func TestParseIPFromNetIP(t *testing.T) {
+	addr := netip.MustParseAddr("::ffff:10.10.10.10")
+	v4IP, v6IP, err := ParseFromNetIPAddr(addr)
+	assert.NoError(t, err)
+	assert.Nil(t, v4IP)
+	assert.NotNil(t, v6IP)
+	assert.Equal(t, uint(128), v6IP.Length)
+	assert.Equal(t, uint64(0x0000000000000000), v6IP.Left)
+	assert.Equal(t, uint64(0x0000ffff0a0a0a0a), v6IP.Right)
+
+	addr = netip.MustParseAddr("127.0.0.1")
+	assert.NotNil(t, addr)
+	v4IP, v6IP, err = ParseFromNetIPAddr(addr)
+	assert.NoError(t, err)
+	assert.NotNil(t, v4IP)
+	assert.Equal(t, uint(32), v4IP.Length)
+	assert.Equal(t, uint32(0x7f000001), v4IP.Address)
+	assert.Nil(t, v6IP)
+
+	prefix := netip.MustParsePrefix("127.0.0.1/10")
+	v4IP, v6IP, err = ParseFromNetIPPrefix(prefix)
+	assert.NoError(t, err)
+	assert.NotNil(t, v4IP)
+	assert.Equal(t, uint(10), v4IP.Length)
+	assert.Nil(t, v6IP)
+
+	prefix = netip.MustParsePrefix("::ffff:10.10.10.10/128")
+	v4IP, v6IP, err = ParseFromNetIPPrefix(prefix)
+	assert.NoError(t, err)
+	assert.Nil(t, v4IP)
+	assert.NotNil(t, v6IP)
+	assert.Equal(t, uint(128), v6IP.Length)
+	assert.Equal(t, uint64(0x0000000000000000), v6IP.Left)
+	assert.Equal(t, uint64(0x0000ffff0a0a0a0a), v6IP.Right)
+
+	_, _, err = ParseFromNetIPAddr(netip.Addr{})
+	assert.Error(t, err)
+
+	_, _, err = ParseFromNetIPPrefix(netip.Prefix{})
+	assert.Error(t, err)
+
+	_, _, err = ParseFromNetIPAddr(netip.MustParseAddr("0.0.0.0"))
+	assert.Error(t, err)
+
 }

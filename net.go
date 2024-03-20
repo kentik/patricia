@@ -3,13 +3,14 @@ package patricia
 import (
 	"fmt"
 	"net"
+	"net/netip"
 	"strconv"
 	"strings"
 )
 
 // ParseIPFromString parses a string address, returning a v4 or v6 IP address
 // TODO: make this more performant:
-//       - is the fmt.Sprintf necessary?
+//   - is the fmt.Sprintf necessary?
 func ParseIPFromString(address string) (*IPv4Address, *IPv6Address, error) {
 	var err error
 
@@ -96,4 +97,48 @@ func ParseFromIPAddr(ipNet *net.IPNet) (*IPv4Address, *IPv6Address, error) {
 	}
 
 	return nil, nil, fmt.Errorf("couldn't parse either v4 or v6 address: %v", ipNet)
+}
+
+// ParseFromNetIPAddr Builds an IPv4Address or IPv6Address from a netip.Addr
+func ParseFromNetIPAddr(addr netip.Addr) (*IPv4Address, *IPv6Address, error) {
+	if !addr.IsValid() {
+		return nil, nil, fmt.Errorf("address is zero")
+	}
+
+	if addr.IsUnspecified() {
+		return nil, nil, fmt.Errorf("address is unspecified %v", addr.String())
+	}
+
+	if addr.Is4() {
+		ret := NewIPv4AddressFromBytes(addr.AsSlice(), uint(addr.BitLen()))
+		return &ret, nil, nil
+	}
+
+	if addr.Is6() {
+		ret := NewIPv6Address(addr.AsSlice(), uint(addr.BitLen()))
+		return nil, &ret, nil
+	}
+
+	return nil, nil, fmt.Errorf("couldn't parse either v4 or v6 address: %v", addr)
+}
+
+// ParseFromNetIPPrefix Builds an IPv4Address or IPv6Address from a netip.Prefix
+func ParseFromNetIPPrefix(prefix netip.Prefix) (*IPv4Address, *IPv6Address, error) {
+	if !prefix.IsValid() {
+		return nil, nil, fmt.Errorf("address is zero")
+	}
+
+	addr := prefix.Addr()
+
+	if addr.Is4() {
+		ret := NewIPv4AddressFromBytes(addr.AsSlice(), uint(prefix.Bits()))
+		return &ret, nil, nil
+	}
+
+	if addr.Is6() {
+		ret := NewIPv6Address(addr.AsSlice(), uint(prefix.Bits()))
+		return nil, &ret, nil
+	}
+
+	return nil, nil, fmt.Errorf("couldn't parse either v4 or v6 prefix: %v", prefix)
 }
