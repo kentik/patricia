@@ -788,6 +788,19 @@ func (iter *TreeIteratorV6) TagsWithBuffer(ret []uint8) []uint8 {
 	return iter.t.tagsForNode(ret, uint(iter.nodeIndex), nil)
 }
 
+// TagsFromRoot returns the list of all tags from
+// the root of the tree to the current node for the iterator.
+// This is not a copy
+// and the result should not be used outside the iterator.
+func (iter *TreeIteratorV6) TagsFromRoot() [][]uint8 {
+	ret := make([][]uint8, len(iter.nodeHistory)+1)
+	for i, n := range iter.nodeHistory {
+		ret[i] = iter.t.tagsForNode(nil, uint(n), nil)
+	}
+	ret[len(iter.nodeHistory)] = iter.t.tagsForNode(nil, uint(iter.nodeIndex), nil)
+	return ret
+}
+
 // Delete a tag from the current node if it matches matchVal, as
 // determined by matchFunc. Returns how many tags are removed
 // - use DeleteWithBuffer if you can reuse slices, to cut down on allocations
